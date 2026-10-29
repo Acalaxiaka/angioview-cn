@@ -10,6 +10,8 @@ h1{font-size:15px;margin:0;font-weight:600}
 .tabs button.on,.tg.on{background:#e08a2a;color:#fff;border-color:#e08a2a}
 #bar{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#141416;font-size:12px}
 #domBar{display:flex;justify-content:space-between;align-items:center;padding:4px 10px 6px;background:#141416;font-size:12px}
+#domDesc{padding:2px 10px 6px;background:#141416;font-size:11px;line-height:1.45;color:#9aa4b2}
+#domDesc b{color:#e0a050;font-weight:600}
 #stage{display:flex;gap:4px;padding:4px;background:#0a0a0c}
 #v3d,#vx{position:relative;flex:1;aspect-ratio:1/1;max-height:42vh;overflow:hidden;touch-action:none;border-radius:4px}
 #v3d{background:radial-gradient(ellipse at 40% 35%,#2a2220,#121018 70%)}
@@ -64,6 +66,7 @@ footer{text-align:center;color:#666;font-size:11px;padding:8px 0 18px}
  <button class="tg on" id="tgS">胸廓</button>
 </span></div>
 <div id="domBar"><span>优势型：</span><span id="dom"><button class="tg on" data-d="R">右优势</button><button class="tg" data-d="C">均衡型</button><button class="tg" data-d="L">左优势</button></span></div>
+<div id="domDesc"></div>
 <div id="stage">
  <div id="v3d"><div class="cap">3D 解剖</div><div id="readout"></div></div>
  <div id="vx"><div class="cap">造影投照</div></div>
@@ -433,8 +436,12 @@ pb.onclick=()=>{playing=!playing;pb.textContent=playing?'⏸':'▶';pb.classList
 window.__av.inj=(t)=>{const [f,w]=phase(t);setInj(f,w,1);draw();};
 
 // ---------- 优势型切换 ----------
+const DOMDESC={R:'<b>右优势（约70–85%）</b>：RCA 越过十字交叉，发出 PDA 和 PLB，供应左室下壁/后壁部分；LCx 较短。',
+ C:'<b>均衡型（约5–10%）</b>：RCA 发出 PDA，LCx 发出左室后侧支（PL），两者共同供应膈面。',
+ L:'<b>左优势（约8–10%）</b>：LCx 走行至十字交叉，发出 PDA（L-PDA）和 PLB（L-PLB）；RCA 细小，止于锐缘附近。'};
+const setDesc=()=>document.getElementById('domDesc').innerHTML=DOMDESC[DOM];setTimeout(setDesc);
 const DOMTIP={R:'右优势（约 70–80%）：RCA 发出 PDA 与 PLB，供应膈面',C:'均衡型：RCA 发出 PDA；LCx 绕行至近十字交叉并发出左室后侧支，RCA 的 PLB 很小/缺如',L:'左优势（约 10%）：LCx 走行至十字交叉并发出 PDA 与 PLB；RCA 细小，止于锐缘，仅发出圆锥支/窦房结支/锐缘支'};
-document.querySelectorAll('#dom button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#dom button').forEach(x=>x.classList.toggle('on',x===b));DOM=b.dataset.d;
+document.querySelectorAll('#dom button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#dom button').forEach(x=>x.classList.toggle('on',x===b));DOM=b.dataset.d;setDesc();
  if(SEL&&!VES.some(v=>v.n===SEL&&v.vs.includes(DOM)))SEL=null;document.getElementById('tip').textContent='🫀 '+DOMTIP[DOM];render();});
 window.__av.dom=d=>document.querySelector('#dom button[data-d='+d+']').click();
 </script>
