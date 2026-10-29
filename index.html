@@ -1,5 +1,6 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0e0e10">
 <title>冠脉造影投照模拟</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -55,12 +56,26 @@ footer{text-align:center;color:#666;font-size:11px;padding:8px 0 18px}
  #inset{width:110px;height:110px}
 }
 
+/* 自适应：安全区 / 横屏侧栏 / 平板 */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overscroll-behavior:none}
+#v3d.full,#vx.full{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+@media (min-width:900px) and (orientation:portrait){#v3d,#vx{max-height:46vh}#mapWrap{height:170px}}
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+ body{display:grid;grid-template-columns:minmax(0,1fr) clamp(300px,34vw,440px);grid-template-rows:auto auto 1fr;grid-template-areas:"st hd" "st a" "st b";height:100vh;height:100dvh;overflow:hidden}
+ header{grid-area:hd}#sideA{grid-area:a}#sideB{grid-area:b;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0}
+ #stage{grid-area:st;flex-direction:row;align-items:center;min-height:0}
+ #v3d,#vx{max-height:none;height:100%;aspect-ratio:auto}
+ #presets{grid-template-columns:repeat(3,1fr)}#mapWrap{height:110px}#inset{width:110px;height:110px}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:500px){header{padding:4px 8px}#bar,#domBar{padding:3px 8px}}
+@media (orientation:landscape) and (min-aspect-ratio:5/4){h1{font-size:13px;white-space:nowrap}header{gap:4px}#bar>span:first-child,#domBar>span:first-child,.sliders .r span{white-space:nowrap}.tabs{white-space:nowrap}.tabs button{padding:4px 8px}}
 </style></head><body>
 <header>
  <h1>冠脉造影投照模拟</h1>
  <div class="tabs"><button id="play" title="播放造影" aria-label="播放造影">▶</button><button data-t="L" class="on">左冠</button><button data-t="R">右冠</button><button data-t="A">全部</button></div>
 </header>
-<div id="bar"><span>显示：</span><span>
+<div id="sideA"><div id="bar"><span>显示：</span><span>
  <button class="tg on" id="tgL">标注</button>
  <button class="tg" id="tgC">彩色</button>
  <button class="tg on" id="tgH">心影</button>
@@ -68,12 +83,12 @@ footer{text-align:center;color:#666;font-size:11px;padding:8px 0 18px}
  <button class="tg on" id="tgB" title="暂停/恢复心跳">♥ 心跳</button>
 </span></div>
 <div id="domBar"><span>优势型：</span><span id="dom"><button class="tg on" data-d="R">右优势</button><button class="tg" data-d="C">均衡型</button><button class="tg" data-d="L">左优势</button></span></div>
-<div id="domDesc"></div>
+<div id="domDesc"></div></div>
 <div id="stage">
  <div id="v3d"><div class="cap">3D 解剖</div><div id="readout"></div></div>
  <div id="vx"><div class="cap">造影投照</div></div>
 </div>
-<div id="mapWrap"><canvas id="map"></canvas>
+<div id="sideB"><div id="mapWrap"><canvas id="map"></canvas>
  <div id="mapLbl">
   <span style="left:4px;top:50%;transform:translateY(-50%)">RAO</span>
   <span style="right:4px;top:50%;transform:translateY(-50%)">LAO</span>
@@ -93,7 +108,7 @@ footer{text-align:center;color:#666;font-size:11px;padding:8px 0 18px}
 </div>
 <div id="tip">选择标准投照体位，或拖动图像 / 角度图旋转 C 臂。</div>
 <div id="presets"></div>
-<footer>仅供教学参考 · 解剖为简化示意模型 · 灵感来自 AngioView</footer>
+<footer>仅供教学参考 · 解剖为简化示意模型 · 灵感来自 AngioView</footer></div>
 <script>/**
  * @license
  * Copyright 2010-2023 Three.js Authors
@@ -255,6 +270,12 @@ function buildHeart(matFn){const g=new THREE.Group(),ms=[];HEARTLIST().forEach((
 function taperTube(cur,r0,r1,seg=72,rad=28){const g=new THREE.TubeGeometry(cur,seg,1,rad,false);const p=g.attributes.position,v=V();
  for(let i=0;i<=seg;i++){const t=i/seg,c=cur.getPointAt(t),r=r0+(r1-r0)*(1-Math.pow(1-t,1.4));for(let j=0;j<=rad;j++){const k=i*(rad+1)+j;v.fromBufferAttribute(p,k).sub(c).multiplyScalar(r).add(c);p.setXYZ(k,v.x,v.y,v.z);}}
  g.computeVertexNormals();return g;}
+// 间隔支：起自 LAD（约 90°），向后下潜入室间隔（心肌内），不突出心外膜
+{const LADc=VES.filter(u=>/^[pmd]LAD$/.test(u.n)),axS=V(3.6,-3.9,1.2).sub(V(.7,.4,-.7)).normalize();
+ VES.filter(v=>/^S\d$/.test(v.n)).forEach(v=>{const s0=v.cur.getPoint(0);let best=null,bd=1e9;LADc.forEach(u=>{if(!share(u.vs,v.vs))return;for(let i=0;i<=80;i++){const q=u.cur.getPoint(i/80),d=q.distanceTo(s0);if(d<bd){bd=d;best=q;}}});
+  if(!best)return;const n=grad(best).normalize(),L0=v.cur.getLength();const P=[best.clone()];
+  for(const [k,dn,da] of [[1,.35,.12],[2,.8,.38],[3,1.25,.7]]){P.push(best.clone().addScaledVector(n,-dn*Math.max(1,L0/1.6)).addScaledVector(axS,da*Math.max(1,L0/1.6)));}
+  v.cur=new THREE.CatmullRomCurve3(P);});}
 VES.forEach(v=>{v.r*=.8;v.r1*=.8;v.geo=taperTube(v.cur,v.r,v.r1);v.j0=new THREE.SphereGeometry(v.r*.98,24,16);v.j1=new THREE.SphereGeometry(v.r1*.98,20,14);});
 // 造影充盈：每支血管沿树的累计路径距离（自开口起）
 let MAXD=0;VES.forEach((v,k)=>{v.len=v.cur.getLength();v.d0=0;
@@ -316,7 +337,7 @@ function beatC(t,tsK,noAtr){const RR=60/HR,x=((t%RR)+RR)%RR;const Ts=Math.max(.2
  if(!noAtr)BEATA.value=q;return v;}
 // ---------- 渲染器与相机（两视图同一正交投影） ----------
 const S=7.2;
-function mkR(el,pr){const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(devicePixelRatio,pr||2));el.prepend(r.domElement);return r;}
+function mkR(el,pr){const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(devicePixelRatio,pr||2.5));el.prepend(r.domElement);return r;}
 const el3=document.getElementById('v3d'),elX=document.getElementById('vx'),insetEl=document.getElementById('inset');
 const R3=mkR(el3),RX=mkR(elX),RC=mkR(insetEl);
 const cam=new THREE.OrthographicCamera(-S,S,S,-S,.1,100);
@@ -402,7 +423,7 @@ function mkLabels(el){return VES.map(v=>{const d=document.createElement('div');d
 const L3=mkLabels(el3),LX=mkLabels(elX);
 function size(r,el){const w=el.clientWidth,h=el.clientHeight;r.setSize(w,h,false);return [w,h];}
 function placeLabels(Ls,w,h){Ls.forEach(l=>{const vis=(showL||SEL===l.n)&&(side==='A'||side===l.g)&&l.vs.includes(DOM);l.d.style.display=vis?'block':'none';if(!vis)return;const on=SEL===l.n;l.d.classList.toggle('sel',on);l.d.textContent=on?l.n+' '+CN[l.n]+(SYN[l.n]?' · 段'+SYN[l.n]:''):l.n;const p=(BEAT.value||BEATA.value||BEATR.value?beatJS(l.p,BEAT.value):l.p.clone()).project(cam);const lx=(p.x+1)/2*w;l.d.style.left=lx+'px';l.d.style.transform=on&&lx>w*.55?'translate(calc(-100% - 6px),-50%)':'';l.d.style.top=(1-p.y)/2*h+'px';});}
-function frust(asp){const s=S/Z;cam.left=-s*asp+PX;cam.right=s*asp+PX;cam.top=s+PY;cam.bottom=-s+PY;cam.updateProjectionMatrix();}
+function frust(asp){const s=S/Z/Math.min(1,asp*1.3);/*竖长视口按宽度适配*/cam.left=-s*asp+PX;cam.right=s*asp+PX;cam.top=s+PY;cam.bottom=-s+PY;cam.updateProjectionMatrix();}
 let raf=0;function render(){if(!raf)raf=requestAnimationFrame(draw);}
 function draw(){raf=0;const d=camDir(A,C);
  cam.position.copy(d.clone().multiplyScalar(30));cam.up.set(0,1,0);cam.lookAt(0,0,0);
@@ -465,7 +486,7 @@ function clearOn(){if(typeof SNAP!=='undefined'&&!mdrag)SNAP=null;document.query
 function buildPresets(){const box=document.getElementById('presets');box.innerHTML='';
  curList().forEach(([n,a,c,t])=>{const b=document.createElement('button');b.innerHTML=n+'<br><small>'+fmt(a,c)+'</small>';
   b.onclick=()=>{A=a;C=c;render();clearOn();b.classList.add('on');document.getElementById('tip').textContent='💡 '+n+'：'+t};box.appendChild(b)});}
-buildPresets();addEventListener('resize',render);render();
+buildPresets();addEventListener('resize',render);addEventListener('orientationchange',()=>setTimeout(render,150));if(window.ResizeObserver)new ResizeObserver(()=>render()).observe(document.getElementById('stage'));render();
 
 // ---------- 中文名 ----------
 const SYN={pRCA:'1',mRCA:'2',dRCA:'3',PDA:'4',PLB:'16',LM:'5',pLAD:'6',mLAD:'7',dLAD:'8',D1:'9',D2:'10',pLCx:'11',OM1:'12a',OM2:'12b',dLCx:'13',PL:'14','L-PLB':'14','L-PDA':'15'};
@@ -519,7 +540,8 @@ window.__av={set:(a,c,z,px,py,sel)=>{A=a;C=c;Z=z;PX=px;PY=py;SEL=sel;render();}}
 // ---------- 播放造影（仅右侧透视视图） ----------
 let playing=false,pt0=0,pT=0;const FILL=1.8,HOLD=1.0,WASH=1.1,GAP=.4,CYC=FILL+HOLD+WASH+GAP;
 function setInj(fill,wash,nz){VX.ms.forEach(m=>{const u=m.material.uniforms;if(!u||!u.fill)return;u.fill.value=fill;u.wash.value=wash;u.nz.value=nz;});}
-function phase(t){const L=MAXD+1.2;t%=CYC;if(t<FILL){const x=t/FILL;return [L*(1-Math.pow(1-x,1.6)),-1e3];}
+function curMax(){let m=1;VES.forEach(v=>{if((side==='A'||v.g===side)&&v.vs.includes(DOM))m=Math.max(m,v.d0+v.len);});return m;}
+function phase(t){const L=curMax()+.6;t%=CYC;if(t<FILL){const x=t/FILL;return [-.3+L*(1-Math.pow(1-x,1.25)),-1e3];}
  if(t<FILL+HOLD)return [1e3,-1e3];if(t<FILL+HOLD+WASH){const x=(t-FILL-HOLD)/WASH;return [1e3,x*L];}return [-5,-1e3];}
 let beating=true,looping=false;
 function tick(now){if(!(playing||beating)){looping=false;return;}looping=true;
