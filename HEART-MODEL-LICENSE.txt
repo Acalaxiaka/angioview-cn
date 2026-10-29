@@ -1,0 +1,10 @@
+Heart 3D model: "3D Human Heart Model" from WillItBlender
+https://willitblender.dev/assets/64fe84b6-8de0-477e-857c-f17eb8071fc1
+License: CC0 1.0 Universal (Public Domain Dedication)
+https://creativecommons.org/publicdomain/zero/1.0/
+No attribution required; attribution provided for transparency.
+
+Alternative considered: Innerscene "Heart with major blood vessels" (CC0), 1.3 MB / ~31k tris.
+Selected WillItBlender for higher anatomical fidelity (~188k tris, named chambers/vessels, epicardial fat material).
+
+AngioView-cn preview wrapper © project; coronary path calibration remains project original.
