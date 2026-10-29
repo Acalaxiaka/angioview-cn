@@ -14,7 +14,7 @@ h1{font-size:15px;margin:0;font-weight:600}
 #domDesc{padding:2px 10px 6px;background:#141416;font-size:11px;line-height:1.45;color:#9aa4b2}
 #domDesc b{color:#e0a050;font-weight:600}
 #stage{display:flex;gap:4px;padding:4px;background:#0a0a0c}
-#v3d,#vx{position:relative;flex:1;aspect-ratio:1/1;max-height:42vh;overflow:hidden;touch-action:pan-y;border-radius:4px}
+#v3d,#vx{position:relative;flex:1;aspect-ratio:1/1;max-height:42vh;overflow:hidden;touch-action:none;border-radius:4px}
 #v3d{background:radial-gradient(ellipse at 40% 35%,#2a2220,#121018 70%)}
 #vx{background:radial-gradient(circle,#a2a2a2,#7a7a7a 70%,#555)}
 #v3d canvas,#vx canvas,#inset canvas{display:block;width:100%;height:100%}
@@ -464,7 +464,7 @@ function paintNoise(){const w=elX.clientWidth,h=elX.clientHeight;if(w<2||h<2)ret
  // 轻微晕影
  const g=xnx.createRadialGradient(xnoise.width/2,xnoise.height/2,xnoise.width*.2,xnoise.width/2,xnoise.height/2,xnoise.width*.72);
  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.22)');xnx.fillStyle=g;xnx.fillRect(0,0,xnoise.width,xnoise.height);}
-let _nW=0;function maybeNoise(){const w=elX.clientWidth;if(w!==_nW){_nW=w;paintNoise();}else if(Math.random()<.08)paintNoise();}
+let _nW=0;function maybeNoise(){const w=elX.clientWidth;if(w!==_nW){_nW=w;paintNoise();}else{xnoise.style.transform='translate('+((Math.random()*6-3)|0)+'px,'+((Math.random()*6-3)|0)+'px)';}}
 
 // ===== C 臂示意场景（患者仰卧于检查床，C 臂随角度旋转） =====
 const sC=new THREE.Scene(),camC=new THREE.PerspectiveCamera(36,1,.1,300);
@@ -510,7 +510,7 @@ function draw(){raf=0;[el3,elX].forEach(e=>e.classList.toggle('zm',Z>1||e.classL
  const s=insetEl.clientWidth;RC.setSize(s,insetEl.clientHeight,false);camC.aspect=s/insetEl.clientHeight;camC.updateProjectionMatrix();camC.lookAt(0,-2,0);RC.render(sC,camC);
  document.getElementById('readout').textContent=fmt();aa.value=A;cc.value=C;drawMap();
  if(typeof maybeNoise==='function')maybeNoise();
- if(typeof syncLesUniforms==='function'){syncLesUniforms();applyBridgeMorph();updateLesPanel();
+ if(typeof syncLesUniforms==='function'){syncLesUniforms();applyBridgeMorph();{const k=SEL+'|'+JSON.stringify(LESIONS[SEL]||0);if(k!==window._lpk){window._lpk=k;updateLesPanel();}}
   if(typeof setVarVis==='function'){setVarVis('RI',!!showRI&&side!=='R');setVarVis('Dual',!!showDual);setVarVis('Anom',!!showAnom);}}
 }
 // ---------- 角度图 ----------
@@ -596,18 +596,20 @@ const clampZ=z=>Math.max(1,Math.min(6,z));
 function zoomAt(el,cx,cy,f){const r=el.getBoundingClientRect(),asp=r.width/r.height,s=S/Z;
  const wx=PX+((cx-r.left)/r.width*2-1)*s*asp,wy=PY-((cy-r.top)/r.height*2-1)*s;const nz=clampZ(Z*f),ns=S/nz;
  PX=wx-((cx-r.left)/r.width*2-1)*ns*asp;PY=wy+((cy-r.top)/r.height*2-1)*ns;Z=nz;if(Z===1){PX=0;PY=0;}}
-[el3,elX].forEach(el=>{const P=new Map();let rot=null,pin=null,tap=null,lastTap=0;
- el.addEventListener('pointerdown',e=>{if(e.target.closest('.fsb'))return;el.setPointerCapture(e.pointerId);P.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(P.size===1){rot={x:e.clientX,y:e.clientY,A,C};tap={x:e.clientX,y:e.clientY,t:Date.now()};}
+[el3,elX].forEach(el=>{const P=new Map();let rot=null,pin=null,tap=null,lastTap=0,lock='r',sy=0,vel=0,st=0;
+ el.addEventListener('pointerdown',e=>{if(e.target.closest('.fsb'))return;try{el.setPointerCapture(e.pointerId)}catch(_){}P.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(P.size===1){rot={x:e.clientX,y:e.clientY,A,C};tap={x:e.clientX,y:e.clientY,t:Date.now()};lock=(e.pointerType==='touch'&&Z===1&&!el.classList.contains('full'))?'?':'r';sy=e.clientY;vel=0;st=performance.now();}
   else if(P.size===2){rot=null;tap=null;const [a,b]=[...P.values()];pin={d:Math.hypot(a.x-b.x,a.y-b.y),mx:(a.x+b.x)/2,my:(a.y+b.y)/2};}});
  el.addEventListener('pointermove',e=>{
   if(!P.has(e.pointerId)){if(e.pointerType==='mouse'){const n=pick(el,e.clientX,e.clientY);if(n!==SEL&&(n||hoverSel)){SEL=n;hoverSel=!!n;render();}}return;}
   P.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(P.size===2&&pin){const [a,b]=[...P.values()];const d=Math.hypot(a.x-b.x,a.y-b.y),mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
    zoomAt(el,mx,my,d/pin.d);const r=el.getBoundingClientRect();const k=2*S/Z/r.height;PX-=(mx-pin.mx)*k;PY+=(my-pin.my)*k;pin={d,mx,my};render();return;}
+  if(rot&&lock==='?'){const dx=e.clientX-rot.x,dy=e.clientY-rot.y;if(Math.hypot(dx,dy)<8)return;tap=null;lock=Math.abs(dy)>Math.abs(dx)*1.1?'s':'r';if(lock==='s'){sy=e.clientY;}}
+  if(rot&&lock==='s'){const dy=e.clientY-sy,now=performance.now();scr(-dy);vel=-dy/Math.max(1,now-st);sy=e.clientY;st=now;return;}
   if(rot){if(tap&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)>6)tap=null;if(tap)return;
    A=Math.round(Math.max(-90,Math.min(90,rot.A-(e.clientX-rot.x)*.5)));C=Math.round(Math.max(-45,Math.min(45,rot.C+(e.clientY-rot.y)*.4)));clearOn();render();}});
- const up=e=>{P.delete(e.pointerId);if(P.size<2)pin=null;
+ const up=e=>{P.delete(e.pointerId);if(P.size<2)pin=null;if(lock==='s'&&P.size===0){let v=vel*16;lock='r';const f=()=>{if(Math.abs(v)<.5)return;scr(v);v*=.94;requestAnimationFrame(f);};if(performance.now()-st<80)requestAnimationFrame(f);}
   if(tap&&Date.now()-tap.t<350){const now=Date.now();
    if(now-lastTap<320){Z=1;PX=0;PY=0;lastTap=0;}else{lastTap=now;SEL=pick(el,e.clientX,e.clientY);hoverSel=false;}render();}
   tap=null;if(P.size===0)rot=null;else if(P.size===1){const q=[...P.values()][0];rot={x:q.x,y:q.y,A,C};}};
@@ -795,5 +797,8 @@ try{render();}catch(e){}
 // 滑块：竖直滑动交给页面滚动时，恢复按下前的数值（防止误触改变角度/心率）
 document.querySelectorAll('input[type=range]').forEach(r=>{let v0=null;r.addEventListener('pointerdown',()=>{v0=r.value;});
  r.addEventListener('pointercancel',()=>{if(v0!==null&&r.value!==v0){r.value=v0;r.dispatchEvent(new Event('input'));}v0=null;});r.addEventListener('pointerup',()=>v0=null);});
+
+// 点击按钮后释放焦点，避免焦点/指针状态残留影响后续滑动
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b)setTimeout(()=>b.blur(),0);},true);
 </script>
 </body></html>
