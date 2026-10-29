@@ -108,19 +108,19 @@ const COL={LM:0xffc04a,LAD:0xff6a3d,D:0xffa24a,S:0xffc27a,LCX:0x4fa8ff,OM:0x7fd0
 // [名称, 系统, 颜色键, 起始半径, 控制点]
 const B=[
  ['LM','L','LM',.34,[[-.3,2.4,.6],[.6,2.5,.9],[1.4,2.4,1.1]]],
- ['pLAD','L','LAD',.29,[[1.4,2.4,1.1],[1.9,2.0,2.2],[2.2,1.3,2.9]]],
- ['mLAD','L','LAD',.24,[[2.2,1.3,2.9],[2.6,.2,3.4],[3.0,-1.0,3.5]]],
- ['dLAD','L','LAD',.19,[[3.0,-1.0,3.5],[3.6,-2.4,3.0],[3.9,-3.4,2.0],[3.6,-3.8,1.0]]],
- ['D1','L','D',.19,[[2.0,1.8,2.4],[3.0,1.2,2.6],[3.9,.1,2.3],[4.5,-1.0,1.8]]],
- ['D2','L','D',.15,[[2.7,-.2,3.4],[3.6,-.9,3.1],[4.3,-2.0,2.5]]],
+ ['pLAD','L','LAD',.28,[[1.4,2.4,1.1],[1.9,2.0,2.2],[2.2,1.3,2.9]]],
+ ['mLAD','L','LAD',.22,[[2.2,1.3,2.9],[2.6,.2,3.4],[3.0,-1.0,3.5]]],
+ ['dLAD','L','LAD',.145,[[3.0,-1.0,3.5],[3.6,-2.4,3.0],[3.9,-3.4,2.0],[3.6,-3.9,1.0],[3.1,-4.3,.2]]],
+ ['D1','L','D',.17,[[2.0,1.8,2.4],[3.0,1.2,2.6],[3.9,.1,2.3],[4.5,-1.0,1.8]]],
+ ['D2','L','D',.13,[[2.7,-.2,3.4],[3.6,-.9,3.1],[4.3,-2.0,2.5]]],
  ['S1','L','S',.11,[[2.0,1.9,2.3],[1.5,1.2,1.4],[1.2,.3,.9]],1],
  ['S2','L','S',.10,[[2.5,.5,3.2],[1.9,-.3,2.4],[1.6,-1.1,1.8]],1],
- ['pLCx','L','LCX',.27,[[1.4,2.4,1.1],[2.4,2.3,.2],[3.1,1.9,-.9]],0,'RC'],
+ ['pLCx','L','LCX',.26,[[1.4,2.4,1.1],[2.4,2.3,.2],[3.1,1.9,-.9]],0,'RC'],
  ['dLCx','L','LCX',.19,[[3.1,1.9,-.9],[3.2,1.4,-2.2],[2.6,.9,-3.2]],0,'R'],
- ['OM1','L','OM',.19,[[2.9,2.1,-.4],[3.9,1.0,-.2],[4.6,-.4,-.3],[4.8,-1.6,-.1]]],
- ['OM2','L','OM',.16,[[3.2,1.5,-1.9],[4.0,.4,-2.0],[4.3,-1.0,-1.8]]],
- ['pRCA','R','RCA',.33,[[-.6,2.2,.9],[-1.6,1.9,1.9],[-2.7,1.2,2.2]],0,'RC'],
- ['mRCA','R','RCA',.30,[[-2.7,1.2,2.2],[-3.5,-.2,1.6],[-3.6,-1.6,.3]],0,'RC'],
+ ['OM1','L','OM',.17,[[2.9,2.1,-.4],[3.9,1.0,-.2],[4.6,-.4,-.3],[4.8,-1.6,-.1]]],
+ ['OM2','L','OM',.14,[[3.2,1.5,-1.9],[4.0,.4,-2.0],[4.3,-1.0,-1.8]]],
+ ['pRCA','R','RCA',.30,[[-.6,2.2,.9],[-1.6,1.9,1.9],[-2.7,1.2,2.2]],0,'RC'],
+ ['mRCA','R','RCA',.28,[[-2.7,1.2,2.2],[-3.5,-.2,1.6],[-3.6,-1.6,.3]],0,'RC'],
  ['dRCA','R','RCA',.27,[[-3.6,-1.6,.3],[-3.1,-2.6,-1.4],[-1.6,-3.0,-2.6],[-.2,-3.0,-3.0]],0,'RC'],
  ['PDA','R','PDA',.17,[[-.2,-3.0,-3.0],[1.0,-3.6,-1.9],[2.2,-4.0,-.6],[3.0,-4.1,.4]],0,'RC'],
  ['PLB','R','PLB',.17,[[-.2,-3.0,-3.0],[1.0,-2.6,-3.5],[2.0,-1.8,-3.7],[2.6,-1.0,-3.5]],0,'R'],
@@ -128,14 +128,14 @@ const B=[
  ['conus','R','CON',.11,[[-1.0,2.1,1.4],[-.6,2.0,2.4],[.3,1.7,3.0]]],
  ['SN','R','SN',.10,[[-1.2,2.1,1.6],[-1.7,3.0,1.0],[-2.0,3.8,-.2]],1],
  // ---- 优势型变异 ----
- ['pLCx','L','LCX',.34,[[1.4,2.4,1.1],[2.4,2.3,.2],[3.1,1.9,-.9]],0,'L'],
+ ['pLCx','L','LCX',.32,[[1.4,2.4,1.1],[2.4,2.3,.2],[3.1,1.9,-.9]],0,'L'],
  ['dLCx','L','LCX',.21,[[3.1,1.8,-.9],[3.2,1.2,-2.4],[2.4,.3,-3.4],[1.4,-.9,-3.7]],0,'C'],
  ['PL','L','OM',.14,[[1.4,-.9,-3.7],[2.2,-1.6,-3.3],[2.9,-2.3,-2.5]],0,'C'],
  ['dLCx','L','LCX',.28,[[3.1,1.8,-.9],[3.2,1.2,-2.4],[2.2,.0,-3.5],[.9,-1.6,-3.6],[-.6,-3.3,-2.2]],0,'L'],
  ['L-PDA','L','OM',.17,[[-.6,-3.3,-2.2],[.6,-3.7,-1.4],[1.8,-4.1,-.4],[2.8,-4.3,.6]],0,'L'],
  ['L-PLB','L','OM',.15,[[.9,-1.6,-3.6],[1.8,-2.2,-3.2],[2.6,-2.6,-2.4]],0,'L'],
- ['pRCA','R','RCA',.22,[[-.6,2.2,.9],[-1.6,1.9,1.9],[-2.7,1.2,2.2]],0,'L'],
- ['mRCA','R','RCA',.19,[[-2.7,1.2,2.2],[-3.5,-.2,1.6],[-3.6,-1.6,.3]],0,'L'],
+ ['pRCA','R','RCA',.21,[[-.6,2.2,.9],[-1.6,1.9,1.9],[-2.7,1.2,2.2]],0,'L'],
+ ['mRCA','R','RCA',.17,[[-2.7,1.2,2.2],[-3.5,-.2,1.6],[-3.6,-1.6,.3]],0,'L'],
  // ---- 补充短分支 ----
  ['RV','R','AM',.12,[[-2.6,.8,2.0],[-1.8,.2,2.8],[-.9,-.4,3.2]]],
  ['S3','L','S',.08,[[3.0,-1.0,3.5],[2.4,-1.6,2.7],[2.1,-2.3,2.1]],1],
@@ -206,7 +206,7 @@ const RPATH={pRCA:[[-.6,2.0,1.2],[-1.6,1.6,1.9],[-2.5,.9,2.0]],mRCA:[[-2.5,.9,2.
  PDA:[[-.6,-3.3,-2.2],[.6,-3.7,-1.4],[1.8,-4.1,-.4],[2.8,-4.3,.6]],PLB:[[-.6,-3.3,-2.2],[.4,-2.9,-2.9],[1.4,-2.3,-3.2],[2.2,-1.5,-3.1]],
  AM:[[-3.2,-.3,1.6],[-2.6,-1.5,2.4],[-1.6,-2.6,2.6],[-.5,-3.2,2.4]],conus:[[-1.0,1.9,1.5],[-.6,1.8,2.4],[.3,1.5,3.0]]};
 // 冠脉开口：左冠窦(主动脉根左后) → LM 向左行经肺动脉干后方分叉；右冠窦(右前) → RCA
-const BIF=[1.75,1.45,.55];
+const BIF=[1.45,1.6,.2]; // LM 长约 1 cm（模型 1 单位≈1.3 cm）
 RPATH.LM=[[0,0,0],[1.2,1.55,.15],BIF];
 RPATH.pLAD=[BIF,[2.05,1.45,1.7],[2.2,1.2,2.9]];
 RPATH.pLCx=[BIF,[2.6,1.65,-.2],[3.1,1.8,-.9]];
@@ -272,35 +272,39 @@ const HB={b:V(.7,.4,-.7),ax:V(3.6,-3.9,1.2).sub(V(.7,.4,-.7))};HB.L=HB.ax.length
 const BEAT={value:0},BEATA={value:0}; // 心室收缩度 / 心房收缩度
 // 形变参数（GLSL 与 JS 共用，保证标签/拾取与渲染一致）
 const DP={LS:.18,RS:.27,TA:.24,TB:-.09,ATR:.10,TR:[-.18,.12,.10]};
-const GLSL_BEAT=`uniform float uBeat;uniform float uAtr;
-vec3 beatDeform(vec3 p){vec3 b=vec3(${HB.b.x},${HB.b.y},${HB.b.z}),ax=vec3(${HB.ax.x},${HB.ax.y},${HB.ax.z});float L=${HB.L.toFixed(3)};
- float s=uBeat,q=uAtr;vec3 d=p-b;float a=dot(d,ax),t=a/L;vec3 rad=d-ax*a;float tc=clamp(t,0.,1.);
- float wv=smoothstep(-.1,.35,t);           // 心室权重
- float wa=1.-smoothstep(-.35,.05,t);       // 心房/大血管权重
- float wroot=smoothstep(-2.2,-.4,t);       // 远离瓣环的大血管位移衰减
- // 径向：心室短轴缩小（中-心尖段最大），心房在室缩期充盈膨胀、心房收缩期缩小
- rad*=1.-${DP.RS}*s*wv*(.55+.45*smoothstep(.15,.7,t))+${DP.ATR}*(s*.6-q)*wa+.03*q*wv;
- // 纵向：瓣环平面向心尖下移（心尖相对固定）
- a+=${DP.LS}*L*s*(1.-tc)*wroot;
- // 扭转：心尖逆时针、基底顺时针
- float ang=s*(${DP.TA}*tc+${DP.TB}*(1.-tc))*wv;rad=rad*cos(ang)+cross(ax,rad)*sin(ang);
- vec3 o=b+ax*a+rad;
- // 整体摆动：每搏轻微平移
- o+=vec3(${DP.TR[0]},${DP.TR[1]},${DP.TR[2]})*s*wroot;
- return o;}
+// LV：径向收缩+扭转为主；RV：纵向(风箱样)为主、游离壁向室间隔移动、扭转小、时相略迟；以室间隔平面平滑过渡
+const SEPN=V(-.8,0,.6);SEPN.addScaledVector(HB.ax,-SEPN.dot(HB.ax)).normalize();
+const DR={LS:.24,RS:.08,TA:.04,TB:-.02,BEL:.55};
+const GLSL_BEAT=`uniform float uBeat;uniform float uAtr;uniform float uBeatR;
+vec3 defo(vec3 p,float s,float q,float RS,float LS,float TA,float TB){vec3 b=vec3(${HB.b.x},${HB.b.y},${HB.b.z}),ax=vec3(${HB.ax.x},${HB.ax.y},${HB.ax.z});float L=${HB.L.toFixed(3)};
+ vec3 d=p-b;float a=dot(d,ax),t=a/L;vec3 rad=d-ax*a;float tc=clamp(t,0.,1.);
+ float wv=smoothstep(-.1,.35,t),wa=1.-smoothstep(-.35,.05,t),wroot=smoothstep(-2.2,-.4,t);
+ rad*=1.-RS*s*wv*(.55+.45*smoothstep(.15,.7,t))+${DP.ATR}*(s*.6-q)*wa+.03*q*wv;
+ a+=LS*L*s*(1.-tc)*wroot;
+ float ang=s*(TA*tc+TB*(1.-tc))*wv;rad=rad*cos(ang)+cross(ax,rad)*sin(ang);
+ return b+ax*a+rad+vec3(${DP.TR[0]},${DP.TR[1]},${DP.TR[2]})*s*wroot;}
+vec3 beatDeform(vec3 p){vec3 b=vec3(${HB.b.x},${HB.b.y},${HB.b.z}),n=vec3(${SEPN.x},${SEPN.y},${SEPN.z});
+ float sd=dot(p-b,n);float wr=smoothstep(.5,1.9,sd);
+ vec3 l=defo(p,uBeat,uAtr,${DP.RS},${DP.LS},${DP.TA},${DP.TB});
+ if(wr<=0.)return l;
+ vec3 r=defo(p,uBeatR,uAtr,${DR.RS},${DR.LS},${DR.TA},${DR.TB})-n*${DR.BEL}*uBeatR*smoothstep(.5,3.,sd);
+ return mix(l,r,wr);}
 `;
-const sm=(e0,e1,x)=>{const t=Math.min(1,Math.max(0,(x-e0)/(e1-e0)));return t*t*(3-2*t);};
-function beatJS(p,s,q=BEATA.value){const d=p.clone().sub(HB.b);let a=d.dot(HB.ax);const t=a/HB.L;const rad=d.clone().addScaledVector(HB.ax,-a);const tc=Math.min(1,Math.max(0,t));
+function defoJS(p,s,q,RS,LS,TA,TB){const d=p.clone().sub(HB.b);let a=d.dot(HB.ax);const t=a/HB.L;const rad=d.clone().addScaledVector(HB.ax,-a);const tc=Math.min(1,Math.max(0,t));
  const wv=sm(-.1,.35,t),wa=1-sm(-.35,.05,t),wroot=sm(-2.2,-.4,t);
- rad.multiplyScalar(1-DP.RS*s*wv*(.55+.45*sm(.15,.7,t))+DP.ATR*(s*.6-q)*wa+.03*q*wv);
- a+=DP.LS*HB.L*s*(1-tc)*wroot;rad.applyAxisAngle(HB.ax,s*(DP.TA*tc+DP.TB*(1-tc))*wv);
+ rad.multiplyScalar(1-RS*s*wv*(.55+.45*sm(.15,.7,t))+DP.ATR*(s*.6-q)*wa+.03*q*wv);a+=LS*HB.L*s*(1-tc)*wroot;rad.applyAxisAngle(HB.ax,s*(TA*tc+TB*(1-tc))*wv);
  return HB.b.clone().addScaledVector(HB.ax,a).add(rad).add(V(...DP.TR).multiplyScalar(s*wroot));}
+const sm=(e0,e1,x)=>{const t=Math.min(1,Math.max(0,(x-e0)/(e1-e0)));return t*t*(3-2*t);};
+const BEATR={value:0};
+function beatJS(p,s,q=BEATA.value,sr=BEATR.value){const l=defoJS(p,s,q,DP.RS,DP.LS,DP.TA,DP.TB);const sd=p.clone().sub(HB.b).dot(SEPN),wr=sm(.5,1.9,sd);if(wr<=0)return l;
+ const r=defoJS(p,sr,q,DR.RS,DR.LS,DR.TA,DR.TB).addScaledVector(SEPN,-DR.BEL*sr*sm(.5,3,sd));return l.lerp(r,wr);}
 function patchBeat(m){if(!m||m.userData.beat)return;m.userData.beat=1;
- if(m.isShaderMaterial){m.uniforms.uBeat=BEAT;m.uniforms.uAtr=BEATA;m.vertexShader=GLSL_BEAT+m.vertexShader.replace('projectionMatrix*modelViewMatrix*vec4(position,1.)','projectionMatrix*viewMatrix*vec4(beatDeform((modelMatrix*vec4(position,1.)).xyz),1.)');}
- else m.onBeforeCompile=sh=>{sh.uniforms.uBeat=BEAT;sh.uniforms.uAtr=BEATA;sh.vertexShader=GLSL_BEAT+sh.vertexShader.replace('#include <project_vertex>','vec4 mvPosition=viewMatrix*vec4(beatDeform((modelMatrix*vec4(transformed,1.)).xyz),1.);gl_Position=projectionMatrix*mvPosition;');};}
+ if(m.isShaderMaterial){m.uniforms.uBeat=BEAT;m.uniforms.uAtr=BEATA;m.uniforms.uBeatR=BEATR;m.vertexShader=GLSL_BEAT+m.vertexShader.replace('projectionMatrix*modelViewMatrix*vec4(position,1.)','projectionMatrix*viewMatrix*vec4(beatDeform((modelMatrix*vec4(position,1.)).xyz),1.)');}
+ else m.onBeforeCompile=sh=>{sh.uniforms.uBeat=BEAT;sh.uniforms.uAtr=BEATA;sh.uniforms.uBeatR=BEATR;sh.vertexShader=GLSL_BEAT+sh.vertexShader.replace('#include <project_vertex>','vec4 mvPosition=viewMatrix*vec4(beatDeform((modelMatrix*vec4(transformed,1.)).xyz),1.);gl_Position=projectionMatrix*mvPosition;');};}
 // 心动周期（随心率变化）：等容收缩→快速射血→减慢射血→等容舒张→快速充盈→缓慢充盈(舒张期 diastasis)→心房收缩
 let HR=70;
-function beatS(t){const RR=60/HR,x=t%RR;const Ts=Math.max(.2,.47-.0017*HR); // 收缩期随心率缩短较少，舒张期缩短更多
+function beatS(t){BEATR.value=beatC(t-.03,1.1,true);return beatC(t,1,false);}
+function beatC(t,tsK,noAtr){const RR=60/HR,x=((t%RR)+RR)%RR;const Ts=Math.max(.2,.47-.0017*HR)*tsK; // 收缩期随心率缩短较少，舒张期缩短更多
  const ivc=.05*Ts/.35,re=.45*Ts,ivr=Math.min(.08,.12*RR),rf=Math.min(.13,.2*RR),ak=Math.min(.11,.13*RR);
  let v=0,q=0;
  if(x<ivc)v=0;
@@ -309,7 +313,7 @@ function beatS(t){const RR=60/HR,x=t%RR;const Ts=Math.max(.2,.47-.0017*HR); // �
  else if(x<Ts+ivr+rf){const u=(x-Ts-ivr)/rf;v=.88*(1-sm(0,1,u))+.1*(1-u);}                                              // 快速充盈
  else{const dEnd=RR-ak;const u=Math.min(1,(x-Ts-ivr-rf)/Math.max(.01,dEnd-Ts-ivr-rf));v=.1*(1-u);                      // 缓慢充盈
   if(x>dEnd){const k=(x-dEnd)/ak;q=Math.sin(Math.PI*k);v=-.05*Math.sin(Math.PI*k);}}                                  // 心房收缩
- BEATA.value=q;return v;}
+ if(!noAtr)BEATA.value=q;return v;}
 // ---------- 渲染器与相机（两视图同一正交投影） ----------
 const S=7.2;
 function mkR(el,pr){const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(devicePixelRatio,pr||2));el.prepend(r.domElement);return r;}
@@ -397,7 +401,7 @@ function camDir(a,c){a*=Math.PI/180;c*=Math.PI/180;return V(Math.sin(a)*Math.cos
 function mkLabels(el){return VES.map(v=>{const d=document.createElement('div');d.className='lbl';d.textContent=v.n;el.appendChild(d);return {d,p:v.cur.getPoint(.55),g:v.g,n:v.n,vs:v.vs};});}
 const L3=mkLabels(el3),LX=mkLabels(elX);
 function size(r,el){const w=el.clientWidth,h=el.clientHeight;r.setSize(w,h,false);return [w,h];}
-function placeLabels(Ls,w,h){Ls.forEach(l=>{const vis=(showL||SEL===l.n)&&(side==='A'||side===l.g)&&l.vs.includes(DOM);l.d.style.display=vis?'block':'none';if(!vis)return;const on=SEL===l.n;l.d.classList.toggle('sel',on);l.d.textContent=on?l.n+' '+CN[l.n]:l.n;const p=(BEAT.value||BEATA.value?beatJS(l.p,BEAT.value):l.p.clone()).project(cam);const lx=(p.x+1)/2*w;l.d.style.left=lx+'px';l.d.style.transform=on&&lx>w*.55?'translate(calc(-100% - 6px),-50%)':'';l.d.style.top=(1-p.y)/2*h+'px';});}
+function placeLabels(Ls,w,h){Ls.forEach(l=>{const vis=(showL||SEL===l.n)&&(side==='A'||side===l.g)&&l.vs.includes(DOM);l.d.style.display=vis?'block':'none';if(!vis)return;const on=SEL===l.n;l.d.classList.toggle('sel',on);l.d.textContent=on?l.n+' '+CN[l.n]+(SYN[l.n]?' · 段'+SYN[l.n]:''):l.n;const p=(BEAT.value||BEATA.value||BEATR.value?beatJS(l.p,BEAT.value):l.p.clone()).project(cam);const lx=(p.x+1)/2*w;l.d.style.left=lx+'px';l.d.style.transform=on&&lx>w*.55?'translate(calc(-100% - 6px),-50%)':'';l.d.style.top=(1-p.y)/2*h+'px';});}
 function frust(asp){const s=S/Z;cam.left=-s*asp+PX;cam.right=s*asp+PX;cam.top=s+PY;cam.bottom=-s+PY;cam.updateProjectionMatrix();}
 let raf=0;function render(){if(!raf)raf=requestAnimationFrame(draw);}
 function draw(){raf=0;const d=camDir(A,C);
@@ -416,8 +420,21 @@ function draw(){raf=0;const d=camDir(A,C);
  document.getElementById('readout').textContent=fmt();aa.value=A;cc.value=C;drawMap();}
 // ---------- 角度图 ----------
 const mapC=document.getElementById('map'),mx=mapC.getContext('2d');
-const PL=[['蜘蛛位',45,-35,'左主干分叉、LAD/LCx 开口及近段，LM 末端病变首选'],['右前斜足位',-15,-30,'LCx 全程、OM 及 LM 体部，LAD 近段亦可见'],['正位足位',0,-30,'LM 及 LAD/LCx 近段，LCx 开口观察佳'],['正位头位',0,40,'LAD 中远段及对角支，避免与 LCx 重叠'],['左前斜头位',40,35,'LAD 中段与 D1/D2 分叉、间隔支'],['右前斜头位',-30,30,'LAD 近中段与对角支分离，间隔支走行']];
-const PR=[['左前斜',45,0,'RCA 开口及近中段，C 形全程展开'],['右前斜',-30,0,'RCA 中段及 PDA，L 形展开'],['正位头位',0,30,'RCA 远段、十字交叉、PDA 与 PLB 分叉']];
+const PL=[
+ ['正位',0,0,'LM 全长及开口（LM 与脊柱重叠时稍调角度）；LAD/LCx 近段重叠较多'],
+ ['正位足位',0,-30,'LM 体部、LAD/LCx 开口与近段（段5/6/11）'],
+ ['正位头位',0,40,'LAD 中远段（段7/8）及 D1/D2 分叉；LAD 与 D 分开'],
+ ['右前斜足位',-30,-30,'LM、pLCx、OM 及 LCx 全程（段11–13）；LAD 近段'],
+ ['右前斜头位',-30,30,'LAD 中远段与 S 支（段7/8），D 支向上分离'],
+ ['右前斜',-30,0,'LCx/OM 及 LAD 中段；心尖段 LAD 展开'],
+ ['左前斜头位',45,30,'LAD 中段、D 分叉与 S 支；LAD 与 LCx 分离'],
+ ['蜘蛛位',45,-35,'LM 末端分叉、LAD/LCx 开口及近段（段5/6/11）'],
+ ['左侧位',90,0,'LAD 中远段（段7/8）全长，LCx 近段；LAD 与 LCx 前后分离']];
+const PR=[['左前斜',45,0,'RCA 开口及近中段（段1/2），C 形全程展开'],
+ ['右前斜',-30,0,'RCA 中段（段2）及 PDA（段4）全长，L 形展开'],
+ ['正位头位',0,30,'RCA 远段、十字交叉、PDA（段4）与 PLB（段16）分叉'],
+ ['左前斜头位',30,20,'十字交叉、PDA 与 PLB 起始（段3/4/16）'],
+ ['左侧位',90,0,'RCA 中段（段2），近段与远段前后分离']];
 const curList=()=>side==='L'?PL:side==='R'?PR:[...PL,...PR.map(p=>['右冠·'+p[0],...p.slice(1)])];
 function drawMap(){const dpr=Math.min(devicePixelRatio,2),w=mapC.clientWidth,h=mapC.clientHeight;mapC.width=w*dpr;mapC.height=h*dpr;mx.setTransform(dpr,0,0,dpr,0,0);
  const pad=22,X=a=>pad+(a+90)/180*(w-2*pad),Y=c=>pad*.6+(45-c)/90*(h-pad*1.2);
@@ -451,6 +468,7 @@ function buildPresets(){const box=document.getElementById('presets');box.innerHT
 buildPresets();addEventListener('resize',render);render();
 
 // ---------- 中文名 ----------
+const SYN={pRCA:'1',mRCA:'2',dRCA:'3',PDA:'4',PLB:'16',LM:'5',pLAD:'6',mLAD:'7',dLAD:'8',D1:'9',D2:'10',pLCx:'11',OM1:'12a',OM2:'12b',dLCx:'13',PL:'14','L-PLB':'14','L-PDA':'15'};
 const CN={AVN:'房室结支',RV:'右室支',S3:'第三间隔支','L-PDA':'后降支(来自回旋支)','L-PLB':'左室后支(来自回旋支)',PL:'左室后侧支(来自回旋支)',LM:'左主干',pLAD:'前降支近段',mLAD:'前降支中段',dLAD:'前降支远段',D1:'第一对角支',D2:'第二对角支',S1:'第一间隔支',S2:'第二间隔支',
  pLCx:'回旋支近段',dLCx:'回旋支远段',OM1:'第一钝缘支',OM2:'第二钝缘支',pRCA:'右冠近段',mRCA:'右冠中段',dRCA:'右冠远段',PDA:'后降支',PLB:'左室后支',AM:'锐缘支',conus:'圆锥支',SN:'窦房结支'};
 // ---------- 选中光晕（两视图） ----------
@@ -464,8 +482,8 @@ VES.forEach(v=>{const geo=taperTube(v.cur,v.r*2.6+.12,v.r1*2.6+.12,64,20);
 const PK={L:[],R:[]};const pkMat=new THREE.MeshBasicMaterial({visible:false});
 VES.forEach(v=>{const m=new THREE.Mesh(taperTube(v.cur,Math.max(v.r,.2)+.35,Math.max(v.r1,.15)+.35,40,10),pkMat);m.userData.n=v.n;m.userData.vs=v.vs;m.updateMatrixWorld();PK[v.g].push(m);});
 const prc=new THREE.Raycaster();
-function deformPick(){const sv=BEAT.value,qa=BEATA.value;const key=sv.toFixed(3)+qa.toFixed(3);[...PK.L,...PK.R].forEach(m=>{if(m.userData.k===key)return;m.userData.k=key;const g=m.geometry,pa=g.attributes.position;
- if(!m.userData.base)m.userData.base=pa.array.slice();const B0=m.userData.base,v=V();for(let i=0;i<pa.count;i++){v.set(B0[3*i],B0[3*i+1],B0[3*i+2]);const w=sv||qa?beatJS(v,sv,qa):v;pa.setXYZ(i,w.x,w.y,w.z);}pa.needsUpdate=true;g.computeBoundingSphere();g.computeBoundingBox();});}
+function deformPick(){const sv=BEAT.value,qa=BEATA.value;const key=sv.toFixed(3)+qa.toFixed(3)+BEATR.value.toFixed(3);[...PK.L,...PK.R].forEach(m=>{if(m.userData.k===key)return;m.userData.k=key;const g=m.geometry,pa=g.attributes.position;
+ if(!m.userData.base)m.userData.base=pa.array.slice();const B0=m.userData.base,v=V();for(let i=0;i<pa.count;i++){v.set(B0[3*i],B0[3*i+1],B0[3*i+2]);const w=sv||qa||BEATR.value?beatJS(v,sv,qa):v;pa.setXYZ(i,w.x,w.y,w.z);}pa.needsUpdate=true;g.computeBoundingSphere();g.computeBoundingBox();});}
 function pick(el,cx,cy){deformPick();const r=el.getBoundingClientRect();frust(r.width/r.height);
  const ndc=new THREE.Vector2((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);prc.setFromCamera(ndc,cam);
  const list=(side==='L'?PK.L:side==='R'?PK.R:[...PK.L,...PK.R]).filter(m=>m.userData.vs.includes(DOM));const h=prc.intersectObjects(list,false)[0];return h?h.object.userData.n:null;}
@@ -525,8 +543,8 @@ window.__av.dom=d=>document.querySelector('#dom button[data-d='+d+']').click();
 
 // 应用心跳形变到心脏/血管/光晕（3D 与透视），骨骼不动
 [H3.g,HX.g,V3.G.L,V3.G.R,VX.G.L,VX.G.R].forEach(g=>g.traverse(o=>{if(o.material)patchBeat(o.material);}));
-tg('tgB',v=>{beating=v;if(v)startLoop();else{BEAT.value=0;BEATA.value=0;render();}});startLoop();
-window.__av.beat=(v,s,q)=>{beating=v;BEAT.value=s||0;BEATA.value=q||0;draw();};
+tg('tgB',v=>{beating=v;if(v)startLoop();else{BEAT.value=0;BEATA.value=0;BEATR.value=0;render();}});startLoop();
+window.__av.beat=(v,s,q,r)=>{beating=v;BEAT.value=s||0;BEATA.value=q||0;BEATR.value=r===undefined?(s||0):r;draw();};
 const hr=document.getElementById('hr'),hrv=document.getElementById('hrv');hr.oninput=()=>{HR=+hr.value;hrv.textContent=HR+' 次/分';};
 </script>
 </body></html>
