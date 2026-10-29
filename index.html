@@ -77,6 +77,23 @@ input[type=range]{touch-action:pan-y}#vs input{touch-action:none}
 #toTop{position:fixed;right:calc(10px + env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));z-index:40;background:rgba(42,42,46,.92);color:#ddd;border:1px solid #555;border-radius:16px;padding:6px 12px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s;touch-action:manipulation}
 #toTop.show{opacity:1;pointer-events:auto}
 @media (orientation:landscape) and (min-aspect-ratio:5/4){#toTop{display:none}}
+
+/* 病变 / 变异 面板 */
+#varBar,#lesBar{display:flex;justify-content:space-between;align-items:center;padding:4px 10px 6px;background:#141416;font-size:12px;flex-wrap:wrap;gap:4px}
+#varBar>span:last-child,#lesBar>span:last-child{display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:flex-end}
+#lesBar{display:none}
+#lesBar.on{display:flex}
+#lesBar .r{display:flex;align-items:center;gap:4px;font-size:11px}
+#lesBar input[type=range]{width:90px;max-width:28vw}
+#lesPctLbl{min-width:36px;color:#e0a050}
+#vx .xnoise{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;opacity:.42;z-index:2;border-radius:4px}
+@media (max-width:420px){
+ #varBar,#lesBar,#bar,#domBar{font-size:11px;padding:4px 8px}
+ .tabs button,.tg{padding:4px 8px;font-size:11px;margin-left:2px}
+ #lesBar input[type=range]{width:72px}
+ #presets{grid-template-columns:repeat(3,1fr)}
+ h1{font-size:13px}
+}
 </style></head><body>
 <header>
  <h1>冠脉造影投照模拟</h1>
@@ -90,7 +107,20 @@ input[type=range]{touch-action:pan-y}#vs input{touch-action:none}
  <button class="tg on" id="tgB" title="暂停/恢复心跳">♥ 心跳</button>
 </span></div>
 <div id="domBar"><span>优势型：</span><span id="dom"><button class="tg on" data-d="R">右优势</button><button class="tg" data-d="C">均衡型</button><button class="tg" data-d="L">左优势</button></span></div>
-<div id="domDesc"></div></div>
+<div id="domDesc"></div>
+<div id="varBar"><span>解剖变异：</span><span id="vars">
+ <button class="tg" id="tgRI" title="中间支 Ramus Intermedius">中间支 RI</button>
+ <button class="tg" id="tgDual" title="双前降支 Dual LAD">双 LAD</button>
+ <button class="tg" id="tgAnom" title="异常冠脉起源">异常起源</button>
+</span></div>
+<div id="lesBar"><span>病变 <b id="lesName" style="color:#e0a050"></b>：</span><span>
+ <button class="tg on" data-les="none">无</button>
+ <button class="tg" data-les="stenosis">狭窄</button>
+ <button class="tg" data-les="occlusion">闭塞</button>
+ <button class="tg" data-les="bridge">心肌桥</button>
+ <span class="r"><span>程度</span><input id="lesPct" type="range" min="30" max="99" value="70"><span id="lesPctLbl">70%</span></span>
+</span></div>
+</div>
 <div id="stage">
  <div id="v3d"><div class="cap">3D 解剖</div><div id="readout"></div></div>
  <div id="vx"><div class="cap">造影投照</div></div>
@@ -126,7 +156,7 @@ input[type=range]{touch-action:pan-y}#vs input{touch-action:none}
 <script>// 坐标系（患者）：x=患者左侧，y=头侧，z=前方（仰卧，探测器在前方）
 // 三个视图（3D 解剖 / 造影投照 / C 臂示意）共享同一状态 A(RAO-/LAO+)、C(CAU-/CRA+)
 const V=(x,y,z)=>new THREE.Vector3(x,y,z);
-const COL={LM:0xffc04a,LAD:0xff6a3d,D:0xffa24a,S:0xffc27a,LCX:0x4fa8ff,OM:0x7fd0ff,RCA:0x7be35a,PDA:0xb4f06a,PLB:0x4fd6a0,AM:0xd8f05a,CON:0x9ff0c0,SN:0x60c8a0};
+const COL={LM:0xffc04a,LAD:0xff6a3d,D:0xffa24a,S:0xffc27a,LCX:0x4fa8ff,OM:0x7fd0ff,RCA:0x7be35a,PDA:0xb4f06a,PLB:0x4fd6a0,AM:0xd8f05a,CON:0x9ff0c0,SN:0x60c8a0,RI:0xff8a60,LAD2:0xff5070};
 // [名称, 系统, 颜色键, 起始半径, 控制点]
 const B=[
  ['LM','L','LM',.34,[[-.3,2.4,.6],[.6,2.5,.9],[1.4,2.4,1.1]]],
@@ -388,11 +418,22 @@ ribs.position.x=-1.15; // 骨性中线(胸骨/脊柱)相对心脏右移 → 心�
 s3.add(ribs);
 // ===== 造影投照场景 =====
 const sX=new THREE.Scene();
-const xray=c=>new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{c:{value:new THREE.Color(c)},k:{value:1},fill:{value:1e3},wash:{value:-1e3},nz:{value:1}},
- vertexShader:`attribute float dist;varying float f;varying float dd;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);dd=dist;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
- // 圆管投影厚度 ∝ 弦长 |n.z|；Beer-Lambert 吸收；fill/wash 为造影剂前沿/冲刷前沿（路径距离）
- fragmentShader:`uniform vec3 c;uniform float k,fill,wash,nz;varying float f;varying float dd;void main(){float a=(1.-exp(-3.2*f))*.82*k;a*=smoothstep(0.,.22,f);
-  a*=1.-smoothstep(fill-.9,fill,dd);a*=.25+.75*smoothstep(wash-1.2,wash,dd);a*=nz;if(a<.003)discard;gl_FragColor=vec4(c,a);}`});
+const xray=c=>new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{c:{value:new THREE.Color(c)},k:{value:1},fill:{value:1e3},wash:{value:-1e3},nz:{value:1},
+  lesT:{value:-1},lesW:{value:.12},lesK:{value:0},lesType:{value:0},uBeat:{value:0}},
+ vertexShader:`attribute float dist;varying float f;varying float dd;varying vec2 vUv;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);dd=dist;vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+ // 圆管投影厚度 ∝ 弦长 |n.z|；Beer-Lambert；fill/wash 造影剂；lesType 1狭窄 2闭塞 3心肌桥
+ fragmentShader:`uniform vec3 c;uniform float k,fill,wash,nz,lesT,lesW,lesK,lesType,uBeat;varying float f;varying float dd;
+ void main(){float a=(1.-exp(-3.2*f))*.82*k;a*=smoothstep(0.,.22,f);
+  float fillC=fill; if(lesType>1.5&&lesType<2.5&&lesT>=0.) fillC=min(fillC,lesT);
+  a*=1.-smoothstep(fillC-.9,fillC,dd);
+  float washA=.18+.82*smoothstep(wash-1.6,wash+.2,dd); // 更平滑冲刷残留
+  a*=washA; a*=nz;
+  if(lesType>0.5&&lesT>=0.){float w=exp(-pow((dd-lesT)/max(lesW,.04),2.));
+   if(lesType<1.5){a*=1.-lesK*.72*w;} // 狭窄：局部变细→吸收减弱
+   else if(lesType<2.5){if(dd>lesT)a*=.04; a*=1.-.9*w;} // 闭塞
+   else {a*=1.-lesK*uBeat*.92*w;} // 心肌桥：收缩期压闭
+  }
+  if(a<.003)discard;gl_FragColor=vec4(c,a);}`});
 const shadowMat=(c,a)=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{a:{value:a}},
  vertexShader:`varying float f;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
  fragmentShader:`uniform float a;varying float f;void main(){gl_FragColor=vec4(0.,0.,0.,a*(1.-exp(-2.5*f)));}`});
@@ -404,6 +445,27 @@ const boneX=a=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,unifo
  vertexShader:`varying float f;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
  fragmentShader:`uniform float a;varying float f;void main(){float k=(1.-exp(-3.*f))*.55+pow(1.-f,2.)*.9;gl_FragColor=vec4(0.,0.,0.,a*k);}`});
 const ribX=new THREE.Group();ribX.position.copy(ribs.position);ribs.children.forEach(m=>{const c=new THREE.Mesh(m.geometry,boneX(m.material===cartM?.02:.055));c.rotation.copy(m.rotation);c.position.copy(m.position);c.scale.copy(m.scale);ribX.add(c);});sX.add(ribX);
+// 透视增强：肺野（透亮）+ 膈肌阴影 + 纵隔软组织
+const softX=(col,a)=>new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:a,depthWrite:false,depthTest:true});
+const lungs=new THREE.Group();
+[[-4.2,.2,-1.2],[3.6,-.2,-.6]].forEach((p,i)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),softX(0xd8d8d8,.14));m.scale.set(2.6,3.4,2.2);m.position.set(...p);lungs.add(m);});
+sX.add(lungs);
+const mediast=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),softX(0x3a3a3a,.08));mediast.scale.set(2.2,3.5,2.4);mediast.position.set(-.2,.2,-.4);sX.add(mediast);
+const diaph=new THREE.Mesh(new THREE.TorusGeometry(5.5,.55,10,48,Math.PI),softX(0x1a1a1a,.16));
+diaph.rotation.set(Math.PI/2.2,.08,0);diaph.position.set(.3,-4.6,-.5);sX.add(diaph);
+const diaph2=new THREE.Mesh(new THREE.PlaneGeometry(14,3.2),softX(0x222222,.1));diaph2.position.set(.2,-5.4,-.2);diaph2.rotation.x=-.35;sX.add(diaph2);
+// 颗粒噪声叠加层（2D canvas）
+const xnoise=document.createElement('canvas');xnoise.className='xnoise';elX.appendChild(xnoise);const xnx=xnoise.getContext('2d');
+function paintNoise(){const w=elX.clientWidth,h=elX.clientHeight;if(w<2||h<2)return;const dpr=Math.min(devicePixelRatio,2);
+ xnoise.width=w*dpr;xnoise.height=h*dpr;xnoise.style.width=w+'px';xnoise.style.height=h+'px';
+ const img=xnx.createImageData(xnoise.width,xnoise.height),d=img.data;
+ for(let i=0;i<d.length;i+=4){const n=90+Math.random()*70|0;d[i]=d[i+1]=d[i+2]=n;d[i+3]=55+Math.random()*50|0;}
+ xnx.putImageData(img,0,0);
+ // 轻微晕影
+ const g=xnx.createRadialGradient(xnoise.width/2,xnoise.height/2,xnoise.width*.2,xnoise.width/2,xnoise.height/2,xnoise.width*.72);
+ g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.22)');xnx.fillStyle=g;xnx.fillRect(0,0,xnoise.width,xnoise.height);}
+let _nW=0;function maybeNoise(){const w=elX.clientWidth;if(w!==_nW){_nW=w;paintNoise();}else if(Math.random()<.08)paintNoise();}
+
 // ===== C 臂示意场景（患者仰卧于检查床，C 臂随角度旋转） =====
 const sC=new THREE.Scene(),camC=new THREE.PerspectiveCamera(36,1,.1,300);
 camC.position.set(-34,-30,30);camC.up.set(0,0,1);
@@ -422,6 +484,7 @@ const beamC=new THREE.Mesh(new THREE.ConeGeometry(2.8,RR*2-2,24,1,true),new THRE
 beamC.rotation.x=-Math.PI/2;carm.add(beamC);
 // ---------- 状态 / 渲染 ----------
 let Z=1,PX=0,PY=0,SEL=null,DOM='R';let A=0,C=0,side='L',showL=true,color=false,showH=true,showS=true;
+const LESIONS={};let showRI=false,showDual=false,showAnom=false;
 const aa=document.getElementById('aa'),cc=document.getElementById('cc');
 const fmt=(a=A,c=C)=>{a=Math.round(a);c=Math.round(c);return (a===0?'AP':(a<0?'RAO ':'LAO ')+Math.abs(a)+'°')+(c===0?'':(c>0?' CRA ':' CAU ')+Math.abs(c)+'°');};
 // 视线方向：LAO=增强器转向患者左(+x)，CRA=转向头侧(+y)；从探测器看向患者
@@ -429,7 +492,7 @@ function camDir(a,c){a*=Math.PI/180;c*=Math.PI/180;return V(Math.sin(a)*Math.cos
 function mkLabels(el){return VES.map(v=>{const d=document.createElement('div');d.className='lbl';d.textContent=v.n;el.appendChild(d);return {d,p:v.cur.getPoint(.55),g:v.g,n:v.n,vs:v.vs};});}
 const L3=mkLabels(el3),LX=mkLabels(elX);
 function size(r,el){const w=el.clientWidth,h=el.clientHeight;r.setSize(w,h,false);return [w,h];}
-function placeLabels(Ls,w,h){Ls.forEach(l=>{const vis=(showL||SEL===l.n)&&(side==='A'||side===l.g)&&l.vs.includes(DOM);l.d.style.display=vis?'block':'none';if(!vis)return;const on=SEL===l.n;l.d.classList.toggle('sel',on);l.d.textContent=on?l.n+' '+CN[l.n]+(SYN[l.n]?' · 段'+SYN[l.n]:''):l.n;const p=(BEAT.value||BEATA.value||BEATR.value?beatJS(l.p,BEAT.value):l.p.clone()).project(cam);const lx=(p.x+1)/2*w;l.d.style.left=lx+'px';l.d.style.transform=on&&lx>w*.55?'translate(calc(-100% - 6px),-50%)':'';l.d.style.top=(1-p.y)/2*h+'px';});}
+function placeLabels(Ls,w,h){Ls.forEach(l=>{const varOk=!l.var||(l.var==='RI'&&showRI)||(l.var==='Dual'&&showDual)||(l.var==='Anom'&&showAnom);const vis=varOk&&(showL||SEL===l.n)&&(side==='A'||side===l.g)&&l.vs.includes(DOM);l.d.style.display=vis?'block':'none';if(!vis)return;const on=SEL===l.n;l.d.classList.toggle('sel',on);l.d.textContent=on?l.n+' '+CN[l.n]+(SYN[l.n]?' · 段'+SYN[l.n]:''):l.n;const p=(BEAT.value||BEATA.value||BEATR.value?beatJS(l.p,BEAT.value):l.p.clone()).project(cam);const lx=(p.x+1)/2*w;l.d.style.left=lx+'px';l.d.style.transform=on&&lx>w*.55?'translate(calc(-100% - 6px),-50%)':'';l.d.style.top=(1-p.y)/2*h+'px';});}
 function frust(asp){const s=S/Z/Math.min(1,asp*1.3);/*竖长视口按宽度适配*/cam.left=-s*asp+PX;cam.right=s*asp+PX;cam.top=s+PY;cam.bottom=-s+PY;cam.updateProjectionMatrix();}
 let raf=0;function render(){if(!raf)raf=requestAnimationFrame(draw);}
 function draw(){raf=0;[el3,elX].forEach(e=>e.classList.toggle('zm',Z>1||e.classList.contains('full')));const d=camDir(A,C);
@@ -437,7 +500,7 @@ function draw(){raf=0;[el3,elX].forEach(e=>e.classList.toggle('zm',Z>1||e.classL
  [V3,VX].forEach(o=>{o.G.L.visible=side!=='R';o.G.R.visible=side!=='L';});
  VX.ms.forEach(m=>m.material.uniforms.c.value.set(color?COL[m.userData.ck]:0x262626));
  HX.g.visible=showH;H3.ms.forEach(m=>m.material.opacity=(showH?1:.35)*(m.userData.n==='Heart'?.45:.62));
- ribs.visible=showS;GL.forEach(g=>g.visible=g.userData.n===SEL&&g.userData.vs.includes(DOM));[V3,VX].forEach(o=>o.ms.forEach(m=>m.visible=m.userData.vs.includes(DOM)));V3.ms.forEach(m=>m.material.emissiveIntensity=m.userData.n===SEL?.55:.12);ribX.visible=showS;
+ ribs.visible=showS;GL.forEach(g=>g.visible=g.userData.n===SEL&&g.userData.vs.includes(DOM));[V3,VX].forEach(o=>o.ms.forEach(m=>{const t=m.userData.var;const varOk=!t||(t==='RI'&&showRI)||(t==='Dual'&&showDual)||(t==='Anom'&&showAnom);m.visible=varOk&&m.userData.vs.includes(DOM);}));V3.ms.forEach(m=>{if(m.material.emissiveIntensity!==undefined)m.material.emissiveIntensity=m.userData.n===SEL?.55:.12;});ribX.visible=showS;
  key1.position.copy(d.clone().multiplyScalar(10).add(V(-4,6,0)));rim.position.copy(d.clone().multiplyScalar(-10).add(V(3,-2,0)));
  // 3D 与透视使用完全相同的相机与投影
  let [w,h]=size(R3,el3);let asp=w/h;frust(asp);R3.render(s3,cam);placeLabels(L3,w,h);
@@ -445,7 +508,11 @@ function draw(){raf=0;[el3,elX].forEach(e=>e.classList.toggle('zm',Z>1||e.classL
  // C 臂：局部 +z 指向探测器
  carm.quaternion.setFromUnitVectors(V(0,0,1),d);
  const s=insetEl.clientWidth;RC.setSize(s,insetEl.clientHeight,false);camC.aspect=s/insetEl.clientHeight;camC.updateProjectionMatrix();camC.lookAt(0,-2,0);RC.render(sC,camC);
- document.getElementById('readout').textContent=fmt();aa.value=A;cc.value=C;drawMap();}
+ document.getElementById('readout').textContent=fmt();aa.value=A;cc.value=C;drawMap();
+ if(typeof maybeNoise==='function')maybeNoise();
+ if(typeof syncLesUniforms==='function'){syncLesUniforms();applyBridgeMorph();updateLesPanel();
+  if(typeof setVarVis==='function'){setVarVis('RI',!!showRI&&side!=='R');setVarVis('Dual',!!showDual);setVarVis('Anom',!!showAnom);}}
+}
 // ---------- 角度图 ----------
 const mapC=document.getElementById('map'),mx=mapC.getContext('2d');
 const PL=[
@@ -505,8 +572,8 @@ function buildPresets(){const box=document.getElementById('presets');box.innerHT
 buildPresets();addEventListener('resize',render);addEventListener('orientationchange',()=>setTimeout(render,150));if(window.ResizeObserver)new ResizeObserver(()=>render()).observe(document.getElementById('stage'));render();
 
 // ---------- 中文名 ----------
-const SYN={pRCA:'1',mRCA:'2',dRCA:'3',PDA:'4',PLB:'16',LM:'5',pLAD:'6',mLAD:'7',dLAD:'8',D1:'9',D2:'10',pLCx:'11',OM1:'12a',OM2:'12b',dLCx:'13',PL:'14','L-PLB':'14','L-PDA':'15'};
-const CN={AVN:'房室结支',RV:'右室支',S3:'第三间隔支','L-PDA':'后降支(来自回旋支)','L-PLB':'左室后支(来自回旋支)',PL:'左室后侧支(来自回旋支)',LM:'左主干',pLAD:'前降支近段',mLAD:'前降支中段',dLAD:'前降支远段',D1:'第一对角支',D2:'第二对角支',S1:'第一间隔支',S2:'第二间隔支',
+const SYN={RI:'12',LAD2:'8b',pRCA:'1',mRCA:'2',dRCA:'3',PDA:'4',PLB:'16',LM:'5',pLAD:'6',mLAD:'7',dLAD:'8',D1:'9',D2:'10',pLCx:'11',OM1:'12a',OM2:'12b',dLCx:'13',PL:'14','L-PLB':'14','L-PDA':'15'};
+const CN={RI:'中间支',LAD2:'第二前降支(双LAD)',AVN:'房室结支',RV:'右室支',S3:'第三间隔支','L-PDA':'后降支(来自回旋支)','L-PLB':'左室后支(来自回旋支)',PL:'左室后侧支(来自回旋支)',LM:'左主干',pLAD:'前降支近段',mLAD:'前降支中段',dLAD:'前降支远段',D1:'第一对角支',D2:'第二对角支',S1:'第一间隔支',S2:'第二间隔支',
  pLCx:'回旋支近段',dLCx:'回旋支远段',OM1:'第一钝缘支',OM2:'第二钝缘支',pRCA:'右冠近段',mRCA:'右冠中段',dRCA:'右冠远段',PDA:'后降支',PLB:'左室后支',AM:'锐缘支',conus:'圆锥支',SN:'窦房结支'};
 // ---------- 选中光晕（两视图） ----------
 const glowMat=(c,k)=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,uniforms:{c:{value:new THREE.Color(c)}},
@@ -523,7 +590,7 @@ function deformPick(){const sv=BEAT.value,qa=BEATA.value;const key=sv.toFixed(3)
  if(!m.userData.base)m.userData.base=pa.array.slice();const B0=m.userData.base,v=V();for(let i=0;i<pa.count;i++){v.set(B0[3*i],B0[3*i+1],B0[3*i+2]);const w=sv||qa||BEATR.value?beatJS(v,sv,qa):v;pa.setXYZ(i,w.x,w.y,w.z);}pa.needsUpdate=true;g.computeBoundingSphere();g.computeBoundingBox();});}
 function pick(el,cx,cy){deformPick();const r=el.getBoundingClientRect();frust(r.width/r.height);
  const ndc=new THREE.Vector2((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);prc.setFromCamera(ndc,cam);
- const list=(side==='L'?PK.L:side==='R'?PK.R:[...PK.L,...PK.R]).filter(m=>m.userData.vs.includes(DOM));const h=prc.intersectObjects(list,false)[0];return h?h.object.userData.n:null;}
+ const list=(side==='L'?PK.L:side==='R'?PK.R:[...PK.L,...PK.R]).filter(m=>{if(!m.userData.vs.includes(DOM))return false;const t=m.userData.var;if(!t)return true;return (t==='RI'&&showRI)||(t==='Dual'&&showDual)||(t==='Anom'&&showAnom);});const h=prc.intersectObjects(list,false)[0];return h?h.object.userData.n:null;}
 // ---------- 触控/鼠标：单指旋转，双指缩放+平移，双击复位，点选血管 ----------
 const clampZ=z=>Math.max(1,Math.min(6,z));
 function zoomAt(el,cx,cy,f){const r=el.getBoundingClientRect(),asp=r.width/r.height,s=S/Z;
@@ -555,7 +622,15 @@ window.__av={set:(a,c,z,px,py,sel)=>{A=a;C=c;Z=z;PX=px;PY=py;SEL=sel;render();}}
 
 // ---------- 播放造影（仅右侧透视视图） ----------
 let playing=false,pt0=0,pT=0;const FILL=1.8,HOLD=1.0,WASH=1.1,GAP=.4,CYC=FILL+HOLD+WASH+GAP;
-function setInj(fill,wash,nz){VX.ms.forEach(m=>{const u=m.material.uniforms;if(!u||!u.fill)return;u.fill.value=fill;u.wash.value=wash;u.nz.value=nz;});}
+function setInj(fill,wash,nz){VX.ms.forEach(m=>{const u=m.material.uniforms;if(!u||!u.fill)return;u.fill.value=fill;u.wash.value=wash;u.nz.value=nz;if(u.uBeat)u.uBeat.value=BEAT.value;});}
+function occlusionCaps(){const caps={L:1e3,R:1e3};Object.entries(LESIONS).forEach(([n,L])=>{if(!L||L.type!=='occlusion')return;const v=VES.find(x=>x.n===n);if(!v)return;const t=v.d0+v.len*(L.t??.45);caps[v.g]=Math.min(caps[v.g],t);});return caps;}
+function syncLesUniforms(){const caps=occlusionCaps();VX.ms.forEach(m=>{const u=m.material.uniforms;if(!u||!u.lesType)return;const L=LESIONS[m.userData.n];
+ const v=VES.find(x=>x.n===m.userData.n&&x.vs.includes(DOM))||VES.find(x=>x.n===m.userData.n);if(!v)return;
+ u.uBeat.value=BEAT.value;
+ // 同侧近端闭塞：远段分支整体不显影
+ if(v.d0>=caps[v.g]-1e-6){u.lesType.value=2;u.lesT.value=v.d0-0.01;u.lesK.value=1;u.lesW.value=.05;return;}
+ if(!L||L.type==='none'){u.lesType.value=0;u.lesK.value=0;u.lesT.value=-1;return;}
+ u.lesType.value=L.type==='stenosis'?1:L.type==='occlusion'?2:3;u.lesK.value=(L.pct||70)/100;u.lesW.value=Math.max(.08,v.len*.09);u.lesT.value=v.d0+v.len*(L.t??.45);});}
 function curMax(){let m=1;VES.forEach(v=>{if((side==='A'||v.g===side)&&v.vs.includes(DOM))m=Math.max(m,v.d0+v.len);});return m;}
 function phase(t){const L=curMax()+.6;t%=CYC;if(t<FILL){const x=t/FILL;return [-.3+L*(1-Math.pow(1-x,1.25)),-1e3];}
  if(t<FILL+HOLD)return [1e3,-1e3];if(t<FILL+HOLD+WASH){const x=(t-FILL-HOLD)/WASH;return [1e3,x*L];}return [-5,-1e3];}
@@ -588,6 +663,135 @@ const hr=document.getElementById('hr'),hrv=document.getElementById('hrv');hr.oni
 // 回到顶部按钮
 {const tb=document.createElement('button');tb.id='toTop';tb.textContent='↑ 顶部';tb.title='回到顶部';document.body.appendChild(tb);
  tb.onclick=()=>scrollTo({top:0,behavior:'smooth'});const upd=()=>tb.classList.toggle('show',scrollY>240);addEventListener('scroll',upd,{passive:true});upd();}
+
+// ========== v1.1 过夜功能：病变模拟 / 透视增强 / 解剖变异 ==========
+const VARG={RI:new THREE.Group(),Dual:new THREE.Group(),Anom:new THREE.Group()};
+s3.add(VARG.RI,VARG.Dual,VARG.Anom);
+const VARGX={RI:new THREE.Group(),Dual:new THREE.Group(),Anom:new THREE.Group()};
+sX.add(VARGX.RI,VARGX.Dual,VARGX.Anom);
+VARG.RI.visible=VARG.Dual.visible=VARG.Anom.visible=false;
+VARGX.RI.visible=VARGX.Dual.visible=VARGX.Anom.visible=false;
+
+function mkVarVessel(n,g,ck,r0,r1,pts,deep,vs,tag){
+  const raw=new THREE.CatmullRomCurve3(pts.map(p=>V(...p)),false,'centripetal');
+  let P=[];const N=14;
+  if(deep){P=pts.map(p=>V(...p));}
+  else{for(let i=0;i<=N;i++){const t=i/N,rawp=raw.getPoint(t),pr=project(rawp.clone(),(r0+(r1-r0)*t)*.8*.55);P.push(pr);}}
+  const cur=new THREE.CatmullRomCurve3(P,false,'centripetal');
+  const geo=taperTube(cur,r0*.8,r1*.8);const j0=new THREE.SphereGeometry(r0*.8*.98,20,14),j1=new THREE.SphereGeometry(r1*.8*.98,16,12);
+  const len=cur.getLength();let d0=0;
+  // attach dist
+  const seg=72,rad=28,a=new Float32Array(geo.attributes.position.count);
+  for(let i=0;i<=seg;i++)for(let j=0;j<=rad;j++)a[i*(rad+1)+j]=d0+len*i/seg;
+  geo.setAttribute('dist',new THREE.BufferAttribute(a,1));
+  j0.setAttribute('dist',new THREE.BufferAttribute(new Float32Array(j0.attributes.position.count).fill(d0),1));
+  j1.setAttribute('dist',new THREE.BufferAttribute(new Float32Array(j1.attributes.position.count).fill(d0+len),1));
+  const v={n,g,ck,r:r0*.8,r1:r1*.8,vs:vs||'RCL',cur,geo,j0,j1,len,d0,var:tag};
+  // materials
+  const m3=new THREE.MeshPhongMaterial({color:COL[ck],shininess:90,specular:0xffffff,emissive:COL[ck],emissiveIntensity:.12});
+  const mx=xray(0x262626);
+  [[VARG[tag],m3,V3],[VARGX[tag],mx,VX]].forEach(([grp,mat,bucket])=>{
+    [[geo,null],[j0,0],[j1,1]].forEach(([gg,t])=>{const m=new THREE.Mesh(gg,mat);if(t!==null)m.position.copy(cur.getPointAt(t));m.renderOrder=2;m.userData.ck=ck;m.userData.n=n;m.userData.vs=v.vs;m.userData.var=tag;grp.add(m);bucket.ms.push(m);});
+  });
+  // pick helper
+  const pm=new THREE.Mesh(taperTube(cur,Math.max(v.r,.2)+.35,Math.max(v.r1,.15)+.35,40,10),pkMat);pm.userData.n=n;pm.userData.vs=v.vs;pm.userData.var=tag;PK[g].push(pm);
+  // labels
+  [{el:el3,L:L3},{el:elX,L:LX}].forEach(({el,L})=>{const d=document.createElement('div');d.className='lbl';d.textContent=n;el.appendChild(d);L.push({d,p:cur.getPoint(.55),g,n,vs:v.vs,var:tag});});
+  // glow
+  const ggeo=taperTube(cur,v.r*2.6+.12,v.r1*2.6+.12,64,20);
+  [[s3,glowMat(0xffe9a0,'.55'),V3],[sX,glowMat(0x7fe0ff,'.5'),VX]].forEach(([sc,mt,o])=>{const m=new THREE.Mesh(ggeo,mt);m.renderOrder=5;m.visible=false;m.userData.n=n;m.userData.vs=v.vs;o.G[g].add(m);GL.push(m);});
+  patchBeat(m3);VX.ms.filter(m=>m.userData.n===n).forEach(m=>patchBeat(m.material));
+  VES.push(v);MAXD=Math.max(MAXD,d0+len);return v;
+}
+
+// 中间支 RI：自 LM 分叉发出，走行于 LAD 与 LCx 之间的前外侧壁
+(function(){const bif=VES.find(v=>v.n==='LM').cur.getPoint(1);
+  const pts=[bif.clone(),bif.clone().add(V(1.1,.1,.6)),V(3.2,.2,1.4),V(4.2,-1.2,1.6),V(4.6,-2.4,1.2)];
+  mkVarVessel('RI','L','RI',.16,.1,pts.map(p=>[p.x,p.y,p.z]),0,'RCL','RI');
+})();
+// 双 LAD：短 LAD（原 p/m 走行较短）旁的第二支自 RCA 圆锥附近跨过至前室间沟（Type IV 示意）
+(function(){const o=VES.find(v=>v.n==='pRCA').cur.getPoint(.15);
+  const pts=[o.clone(),V(-.2,1.8,2.6),V(1.4,1.2,3.2),V(2.4,.2,3.4),V(3.0,-1.2,3.2),V(3.4,-2.6,2.4)];
+  mkVarVessel('LAD2','R','LAD2',.14,.09,pts.map(p=>[p.x,p.y,p.z]),0,'RCL','Dual');
+})();
+// 异常起源示意：RCA 从左冠窦发出（走行于主动脉与肺动脉之间）— 以额外细管表示异常 RCA 近段
+(function(){const loft=rootPt(ROOT.th0,.55,.05);
+  const pts=[loft,[-.1,1.7,1.4],[-.9,1.8,2.0],[-1.8,1.4,2.1],[-2.5,.9,2.0]];
+  mkVarVessel('pRCA*','R','RCA',.22,.18,pts,1,'RCL','Anom');
+})();
+
+function setVarVis(tag,on){VARG[tag].visible=!!on;VARGX[tag].visible=!!on;}
+setVarVis('RI',false);setVarVis('Dual',false);setVarVis('Anom',false);
+
+function lesRadiusMul(v,t,beat){
+  const L=LESIONS[v.n];if(!L||L.type==='none')return 1;
+  const lt=L.t??.45,w=0.09,g=Math.exp(-Math.pow((t-lt)/w,2)),k=(L.pct||70)/100;
+  if(L.type==='stenosis')return Math.max(.08,1-k*.85*g);
+  if(L.type==='occlusion'){if(t>=lt)return .06;return Math.max(.08,1-.92*g);}
+  if(L.type==='bridge')return Math.max(.08,1-k*.92*(beat||0)*g);
+  return 1;
+}
+function rebuildVesselRadius(v,beat){
+  if(!v._basePos){v._basePos=v.geo.attributes.position.array.slice();v._baseJ0=v.j0.attributes.position.array.slice();v._baseJ1=v.j1.attributes.position.array.slice();}
+  const seg=72,rad=28,pos=v.geo.attributes.position,base=v._basePos,tmp=V(),cen=V();
+  for(let i=0;i<=seg;i++){const t=i/seg;const mul=lesRadiusMul(v,t,beat);cen.copy(v.cur.getPointAt(t));
+   for(let j=0;j<=rad;j++){const k=i*(rad+1)+j;tmp.set(base[3*k],base[3*k+1],base[3*k+2]).sub(cen).multiplyScalar(mul).add(cen);pos.setXYZ(k,tmp.x,tmp.y,tmp.z);}}
+  pos.needsUpdate=true;v.geo.computeVertexNormals();
+  // end caps
+  const m0=lesRadiusMul(v,0,beat),m1=lesRadiusMul(v,1,beat);
+  [[v.j0,v._baseJ0,m0],[v.j1,v._baseJ1,m1]].forEach(([g,b,m])=>{const pa=g.attributes.position;for(let i=0;i<pa.count;i++){pa.setXYZ(i,b[3*i]*m,b[3*i+1]*m,b[3*i+2]*m);}pa.needsUpdate=true;});
+}
+function applyLesionGeo(name){
+  const v=VES.find(x=>x.n===name);if(!v||v.var){/* variant vessels: uniforms only */return;}
+  const L=LESIONS[name];
+  if(!L||L.type==='none'||L.type==='bridge'){if(v._basePos){const pos=v.geo.attributes.position;pos.array.set(v._basePos);pos.needsUpdate=true;v.geo.computeVertexNormals();
+    if(v._baseJ0){v.j0.attributes.position.array.set(v._baseJ0);v.j0.attributes.position.needsUpdate=true;}
+    if(v._baseJ1){v.j1.attributes.position.array.set(v._baseJ1);v.j1.attributes.position.needsUpdate=true;}}
+    if(L&&L.type==='bridge')rebuildVesselRadius(v,BEAT.value);return;}
+  rebuildVesselRadius(v,0);
+}
+function applyBridgeMorph(){Object.keys(LESIONS).forEach(n=>{const L=LESIONS[n];if(L&&L.type==='bridge'){const v=VES.find(x=>x.n===n);if(v&&!v.var)rebuildVesselRadius(v,BEAT.value);}});}
+
+function updateLesPanel(){
+  const bar=document.getElementById('lesBar');if(!bar)return;
+  if(!SEL){bar.classList.remove('on');return;}
+  bar.classList.add('on');
+  document.getElementById('lesName').textContent=SEL+(CN[SEL]?' '+CN[SEL]:'');
+  const L=LESIONS[SEL]||{type:'none',pct:70,t:.45};
+  document.querySelectorAll('#lesBar button[data-les]').forEach(b=>b.classList.toggle('on',b.dataset.les===(L.type||'none')));
+  const pct=L.pct||70;const sl=document.getElementById('lesPct');if(document.activeElement!==sl)sl.value=pct;
+  document.getElementById('lesPctLbl').textContent=pct+'%';
+  sl.disabled=L.type==='none';
+}
+
+function setLesion(type){
+  if(!SEL)return;
+  if(type==='none'){delete LESIONS[SEL];}
+  else{const prev=LESIONS[SEL]||{};LESIONS[SEL]={type,pct:prev.pct||+document.getElementById('lesPct').value||70,t:prev.t??.45};
+   if(type==='bridge'&&!/LAD|mLAD|pLAD/.test(SEL))document.getElementById('tip').textContent='💡 心肌桥常见于 mLAD 中段；也可在其它节段示意收缩期受压。';
+   else if(type==='stenosis')document.getElementById('tip').textContent='💡 已在 '+SEL+' 设置狭窄 '+LESIONS[SEL].pct+'%。切换投照体位观察狭窄显露最佳角度。';
+   else if(type==='occlusion')document.getElementById('tip').textContent='💡 已在 '+SEL+' 设置闭塞：远段不显影。播放造影可看充盈中断。';
+   else if(type==='bridge')document.getElementById('tip').textContent='💡 心肌桥：收缩期管腔受压，舒张期恢复。开心跳并对比收缩/舒张。';}
+  applyLesionGeo(SEL);syncLesUniforms();updateLesPanel();render();
+}
+
+document.querySelectorAll('#lesBar button[data-les]').forEach(b=>b.onclick=()=>setLesion(b.dataset.les));
+document.getElementById('lesPct').oninput=()=>{const v=+document.getElementById('lesPct').value;document.getElementById('lesPctLbl').textContent=v+'%';
+ if(!SEL)return;if(!LESIONS[SEL]||LESIONS[SEL].type==='none')return;LESIONS[SEL].pct=v;applyLesionGeo(SEL);syncLesUniforms();render();};
+
+tg('tgRI',v=>{showRI=v;setVarVis('RI',v);document.getElementById('tip').textContent=v?'🫀 中间支 RI：自 LM 分叉发出，走行于 LAD 与 LCx 之间（约 15–30% 人群）。':'';render();});
+tg('tgDual',v=>{showDual=v;setVarVis('Dual',v);document.getElementById('tip').textContent=v?'🫀 双 LAD（Type IV 示意）：一支 LAD2 起自 RCA 附近，跨至前室间沟。':'';render();});
+tg('tgAnom',v=>{showAnom=v;setVarVis('Anom',v);document.getElementById('tip').textContent=v?'🫀 异常起源示意：RCA 开口于左冠窦，近段走行于主动脉与肺动脉之间（教学示意）。':'';render();});
+
+// 选中变化时刷新病变栏（hook __av）
+const _set=window.__av.set;window.__av.set=(a,c,z,px,py,sel)=>{_set(a,c,z,px,py,sel);updateLesPanel();};
+window.__av.lesion=(n,type,pct)=>{SEL=n;if(type){LESIONS[n]={type,pct:pct||70,t:.45};applyLesionGeo(n);}updateLesPanel();render();};
+window.__av.vars=(ri,dual,anom)=>{showRI=!!ri;showDual=!!dual;showAnom=!!anom;
+ document.getElementById('tgRI').classList.toggle('on',showRI);document.getElementById('tgDual').classList.toggle('on',showDual);document.getElementById('tgAnom').classList.toggle('on',showAnom);
+ setVarVis('RI',showRI);setVarVis('Dual',showDual);setVarVis('Anom',showAnom);render();};
+paintNoise();
+try{render();}catch(e){}
+
 // 滑块：竖直滑动交给页面滚动时，恢复按下前的数值（防止误触改变角度/心率）
 document.querySelectorAll('input[type=range]').forEach(r=>{let v0=null;r.addEventListener('pointerdown',()=>{v0=r.value;});
  r.addEventListener('pointercancel',()=>{if(v0!==null&&r.value!==v0){r.value=v0;r.dispatchEvent(new Event('input'));}v0=null;});r.addEventListener('pointerup',()=>v0=null);});
