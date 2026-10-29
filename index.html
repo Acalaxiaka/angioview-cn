@@ -55,32 +55,6 @@ footer{text-align:center;color:#666;font-size:11px;padding:8px 0 18px}
  #inset{width:110px;height:110px}
 }
 
-/* ===== 视觉精修：深色医疗主题 ===== */
-:root{--bg:#0b0d12;--panel:#12151c;--panel2:#171b24;--line:#262c38;--txt:#d7dde8;--mut:#8a94a6;--acc:#2fb8a8;--acc2:#e6a23c;--accbg:rgba(47,184,168,.14)}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif;letter-spacing:.2px}
-header{background:linear-gradient(180deg,#161a23,#11141b);border-bottom:1px solid var(--line);padding:9px 10px}
-h1{font-size:15px;font-weight:650;color:#eef2f8}
-#bar,#domBar,#domDesc,.hs,.ctrl{background:var(--panel)}
-#bar,#domBar{border-bottom:1px solid #1b202a}
-.tabs button,.tg,#dom button{background:var(--panel2);color:#c3cad6;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;transition:background .15s,border-color .15s,color .15s}
-.tabs button.on,.tg.on,#dom button.on{background:var(--accbg);color:#7fe6d9;border-color:var(--acc);box-shadow:inset 0 0 0 1px rgba(47,184,168,.25)}
-.tabs #play{background:var(--acc2);color:#1a1205;border-color:var(--acc2);font-weight:700}
-.tabs #play.on{background:#3a2a10;color:var(--acc2)}
-#tgB.on{color:#ff8a8a;border-color:#d9534f;background:rgba(217,83,79,.14)}
-#stage{background:var(--bg)}
-#v3d,#vx{border:1px solid var(--line);border-radius:10px}
-.cap{font-size:11px;color:#aeb7c6;background:rgba(0,0,0,.35);padding:1px 6px;border-radius:6px;left:6px;top:6px}
-#readout{font-size:15px;font-weight:700;color:#fff;background:rgba(0,0,0,.35);padding:1px 7px;border-radius:7px;right:6px;top:6px}
-#mapWrap{background:var(--panel);border-color:var(--line);border-radius:10px}
-#tip{background:#0f1a1e;color:#8fdcd2;border-top:1px solid #16303a;border-bottom:1px solid #16303a}
-#presets button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:#e3e8f0}
-#presets button.on{border-color:var(--acc);background:var(--accbg)}
-#presets button small{color:var(--mut)}
-#inset{background:#0d1016;border-color:var(--line);border-radius:10px}
-.fsb{border-radius:9px;border-color:#3a4252;background:rgba(10,12,18,.55)}
-#domDesc{color:#9aa6b8}#domDesc b{color:var(--acc2)}
-input[type=range]{accent-color:var(--acc)}
-footer{color:#5d6676}
 </style></head><body>
 <header>
  <h1>冠脉造影投照模拟</h1>
@@ -111,6 +85,7 @@ footer{color:#5d6676}
  <div class="sliders">
   <div>旋转</div>
   <div class="r"><span>RAO 90</span><input id="aa" type="range" min="-90" max="90" value="0"><span>LAO 90</span></div>
+  <div class="r" style="margin-top:6px"><span style="white-space:nowrap">♥ 心率</span><input id="hr" type="range" min="40" max="150" value="70"><span id="hrv" style="min-width:56px;text-align:right;color:#ff9a9a">70 次/分</span></div>
   <div style="margin-top:4px;color:#777">单指拖动旋转 · 双指缩放/平移 · 双击复位 · 点击血管显示名称</div>
  </div>
  <div id="vs"><span>CRA</span><input id="cc" type="range" min="-45" max="45" value="0"><span>CAU</span></div>
@@ -294,22 +269,47 @@ function buildVessels(matFn){const G={L:new THREE.Group(),R:new THREE.Group()},m
  return {G,ms};}
 // ---------- 心跳形变（顶点着色器，世界坐标）：心室沿 LV 长轴向心收缩、心尖向基底移动、轻微扭转 ----------
 const HB={b:V(.7,.4,-.7),ax:V(3.6,-3.9,1.2).sub(V(.7,.4,-.7))};HB.L=HB.ax.length();HB.ax.normalize();
-const BEAT={value:0};
-const GLSL_BEAT=`uniform float uBeat;
+const BEAT={value:0},BEATA={value:0}; // 心室收缩度 / 心房收缩度
+// 形变参数（GLSL 与 JS 共用，保证标签/拾取与渲染一致）
+const DP={LS:.18,RS:.27,TA:.24,TB:-.09,ATR:.10,TR:[-.18,.12,.10]};
+const GLSL_BEAT=`uniform float uBeat;uniform float uAtr;
 vec3 beatDeform(vec3 p){vec3 b=vec3(${HB.b.x},${HB.b.y},${HB.b.z}),ax=vec3(${HB.ax.x},${HB.ax.y},${HB.ax.z});float L=${HB.L.toFixed(3)};
- vec3 d=p-b;float a=dot(d,ax),t=a/L;vec3 rad=d-ax*a;float w=smoothstep(-.15,.35,t),s=uBeat,tc=clamp(t,0.,1.);
- rad*=1.-.10*s*w-.025*s*(1.-w);a*=1.-.08*s*tc;
- float ang=.10*s*tc;vec3 k=ax;rad=rad*cos(ang)+cross(k,rad)*sin(ang);
- return b+ax*a+rad;}
+ float s=uBeat,q=uAtr;vec3 d=p-b;float a=dot(d,ax),t=a/L;vec3 rad=d-ax*a;float tc=clamp(t,0.,1.);
+ float wv=smoothstep(-.1,.35,t);           // 心室权重
+ float wa=1.-smoothstep(-.35,.05,t);       // 心房/大血管权重
+ float wroot=smoothstep(-2.2,-.4,t);       // 远离瓣环的大血管位移衰减
+ // 径向：心室短轴缩小（中-心尖段最大），心房在室缩期充盈膨胀、心房收缩期缩小
+ rad*=1.-${DP.RS}*s*wv*(.55+.45*smoothstep(.15,.7,t))+${DP.ATR}*(s*.6-q)*wa+.03*q*wv;
+ // 纵向：瓣环平面向心尖下移（心尖相对固定）
+ a+=${DP.LS}*L*s*(1.-tc)*wroot;
+ // 扭转：心尖逆时针、基底顺时针
+ float ang=s*(${DP.TA}*tc+${DP.TB}*(1.-tc))*wv;rad=rad*cos(ang)+cross(ax,rad)*sin(ang);
+ vec3 o=b+ax*a+rad;
+ // 整体摆动：每搏轻微平移
+ o+=vec3(${DP.TR[0]},${DP.TR[1]},${DP.TR[2]})*s*wroot;
+ return o;}
 `;
-function beatJS(p,s){const d=p.clone().sub(HB.b),a0=d.dot(HB.ax),t=a0/HB.L;const rad=d.clone().addScaledVector(HB.ax,-a0);
- const w=THREE.MathUtils.smoothstep(t,-.15,.35),tc=Math.min(1,Math.max(0,t));rad.multiplyScalar(1-.10*s*w-.025*s*(1-w));const a=a0*(1-.08*s*tc);
- rad.applyAxisAngle(HB.ax,.10*s*tc);return HB.b.clone().addScaledVector(HB.ax,a).add(rad);}
+const sm=(e0,e1,x)=>{const t=Math.min(1,Math.max(0,(x-e0)/(e1-e0)));return t*t*(3-2*t);};
+function beatJS(p,s,q=BEATA.value){const d=p.clone().sub(HB.b);let a=d.dot(HB.ax);const t=a/HB.L;const rad=d.clone().addScaledVector(HB.ax,-a);const tc=Math.min(1,Math.max(0,t));
+ const wv=sm(-.1,.35,t),wa=1-sm(-.35,.05,t),wroot=sm(-2.2,-.4,t);
+ rad.multiplyScalar(1-DP.RS*s*wv*(.55+.45*sm(.15,.7,t))+DP.ATR*(s*.6-q)*wa+.03*q*wv);
+ a+=DP.LS*HB.L*s*(1-tc)*wroot;rad.applyAxisAngle(HB.ax,s*(DP.TA*tc+DP.TB*(1-tc))*wv);
+ return HB.b.clone().addScaledVector(HB.ax,a).add(rad).add(V(...DP.TR).multiplyScalar(s*wroot));}
 function patchBeat(m){if(!m||m.userData.beat)return;m.userData.beat=1;
- if(m.isShaderMaterial){m.uniforms.uBeat=BEAT;m.vertexShader=GLSL_BEAT+m.vertexShader.replace('projectionMatrix*modelViewMatrix*vec4(position,1.)','projectionMatrix*viewMatrix*vec4(beatDeform((modelMatrix*vec4(position,1.)).xyz),1.)');}
- else m.onBeforeCompile=sh=>{sh.uniforms.uBeat=BEAT;sh.vertexShader=GLSL_BEAT+sh.vertexShader.replace('#include <project_vertex>','vec4 mvPosition=viewMatrix*vec4(beatDeform((modelMatrix*vec4(transformed,1.)).xyz),1.);gl_Position=projectionMatrix*mvPosition;');};}
-// 心动周期 ~70 bpm：收缩期约占 1/3（快速射血），舒张早期快速充盈，心房收缩小幅
-function beatS(t){const T=60/70,x=(t%T)/T;if(x<.3)return .5-.5*Math.cos(Math.PI*x/.3);if(x<.48)return .5+.5*Math.cos(Math.PI*(x-.3)/.18);if(x>.82&&x<.96)return .12*Math.sin(Math.PI*(x-.82)/.14);return 0;}
+ if(m.isShaderMaterial){m.uniforms.uBeat=BEAT;m.uniforms.uAtr=BEATA;m.vertexShader=GLSL_BEAT+m.vertexShader.replace('projectionMatrix*modelViewMatrix*vec4(position,1.)','projectionMatrix*viewMatrix*vec4(beatDeform((modelMatrix*vec4(position,1.)).xyz),1.)');}
+ else m.onBeforeCompile=sh=>{sh.uniforms.uBeat=BEAT;sh.uniforms.uAtr=BEATA;sh.vertexShader=GLSL_BEAT+sh.vertexShader.replace('#include <project_vertex>','vec4 mvPosition=viewMatrix*vec4(beatDeform((modelMatrix*vec4(transformed,1.)).xyz),1.);gl_Position=projectionMatrix*mvPosition;');};}
+// 心动周期（随心率变化）：等容收缩→快速射血→减慢射血→等容舒张→快速充盈→缓慢充盈(舒张期 diastasis)→心房收缩
+let HR=70;
+function beatS(t){const RR=60/HR,x=t%RR;const Ts=Math.max(.2,.47-.0017*HR); // 收缩期随心率缩短较少，舒张期缩短更多
+ const ivc=.05*Ts/.35,re=.45*Ts,ivr=Math.min(.08,.12*RR),rf=Math.min(.13,.2*RR),ak=Math.min(.11,.13*RR);
+ let v=0,q=0;
+ if(x<ivc)v=0;
+ else if(x<Ts){const u=(x-ivc)/(Ts-ivc);v=u<.45?.78*Math.sin(Math.PI/2*u/.45):.78+.22*Math.sin(Math.PI/2*(u-.45)/.55);}  // 快速/减慢射血
+ else if(x<Ts+ivr)v=1-.12*(x-Ts)/ivr;                                                                                 // 等容舒张
+ else if(x<Ts+ivr+rf){const u=(x-Ts-ivr)/rf;v=.88*(1-sm(0,1,u))+.1*(1-u);}                                              // 快速充盈
+ else{const dEnd=RR-ak;const u=Math.min(1,(x-Ts-ivr-rf)/Math.max(.01,dEnd-Ts-ivr-rf));v=.1*(1-u);                      // 缓慢充盈
+  if(x>dEnd){const k=(x-dEnd)/ak;q=Math.sin(Math.PI*k);v=-.05*Math.sin(Math.PI*k);}}                                  // 心房收缩
+ BEATA.value=q;return v;}
 // ---------- 渲染器与相机（两视图同一正交投影） ----------
 const S=7.2;
 function mkR(el,pr){const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(devicePixelRatio,pr||2));el.prepend(r.domElement);return r;}
@@ -397,7 +397,7 @@ function camDir(a,c){a*=Math.PI/180;c*=Math.PI/180;return V(Math.sin(a)*Math.cos
 function mkLabels(el){return VES.map(v=>{const d=document.createElement('div');d.className='lbl';d.textContent=v.n;el.appendChild(d);return {d,p:v.cur.getPoint(.55),g:v.g,n:v.n,vs:v.vs};});}
 const L3=mkLabels(el3),LX=mkLabels(elX);
 function size(r,el){const w=el.clientWidth,h=el.clientHeight;r.setSize(w,h,false);return [w,h];}
-function placeLabels(Ls,w,h){Ls.forEach(l=>{const vis=(showL||SEL===l.n)&&(side==='A'||side===l.g)&&l.vs.includes(DOM);l.d.style.display=vis?'block':'none';if(!vis)return;const on=SEL===l.n;l.d.classList.toggle('sel',on);l.d.textContent=on?l.n+' '+CN[l.n]:l.n;const p=(BEAT.value?beatJS(l.p,BEAT.value):l.p.clone()).project(cam);const lx=(p.x+1)/2*w;l.d.style.left=lx+'px';l.d.style.transform=on&&lx>w*.55?'translate(calc(-100% - 6px),-50%)':'';l.d.style.top=(1-p.y)/2*h+'px';});}
+function placeLabels(Ls,w,h){Ls.forEach(l=>{const vis=(showL||SEL===l.n)&&(side==='A'||side===l.g)&&l.vs.includes(DOM);l.d.style.display=vis?'block':'none';if(!vis)return;const on=SEL===l.n;l.d.classList.toggle('sel',on);l.d.textContent=on?l.n+' '+CN[l.n]:l.n;const p=(BEAT.value||BEATA.value?beatJS(l.p,BEAT.value):l.p.clone()).project(cam);const lx=(p.x+1)/2*w;l.d.style.left=lx+'px';l.d.style.transform=on&&lx>w*.55?'translate(calc(-100% - 6px),-50%)':'';l.d.style.top=(1-p.y)/2*h+'px';});}
 function frust(asp){const s=S/Z;cam.left=-s*asp+PX;cam.right=s*asp+PX;cam.top=s+PY;cam.bottom=-s+PY;cam.updateProjectionMatrix();}
 let raf=0;function render(){if(!raf)raf=requestAnimationFrame(draw);}
 function draw(){raf=0;const d=camDir(A,C);
@@ -464,7 +464,9 @@ VES.forEach(v=>{const geo=taperTube(v.cur,v.r*2.6+.12,v.r1*2.6+.12,64,20);
 const PK={L:[],R:[]};const pkMat=new THREE.MeshBasicMaterial({visible:false});
 VES.forEach(v=>{const m=new THREE.Mesh(taperTube(v.cur,Math.max(v.r,.2)+.35,Math.max(v.r1,.15)+.35,40,10),pkMat);m.userData.n=v.n;m.userData.vs=v.vs;m.updateMatrixWorld();PK[v.g].push(m);});
 const prc=new THREE.Raycaster();
-function pick(el,cx,cy){const r=el.getBoundingClientRect();frust(r.width/r.height);
+function deformPick(){const sv=BEAT.value,qa=BEATA.value;const key=sv.toFixed(3)+qa.toFixed(3);[...PK.L,...PK.R].forEach(m=>{if(m.userData.k===key)return;m.userData.k=key;const g=m.geometry,pa=g.attributes.position;
+ if(!m.userData.base)m.userData.base=pa.array.slice();const B0=m.userData.base,v=V();for(let i=0;i<pa.count;i++){v.set(B0[3*i],B0[3*i+1],B0[3*i+2]);const w=sv||qa?beatJS(v,sv,qa):v;pa.setXYZ(i,w.x,w.y,w.z);}pa.needsUpdate=true;g.computeBoundingSphere();g.computeBoundingBox();});}
+function pick(el,cx,cy){deformPick();const r=el.getBoundingClientRect();frust(r.width/r.height);
  const ndc=new THREE.Vector2((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);prc.setFromCamera(ndc,cam);
  const list=(side==='L'?PK.L:side==='R'?PK.R:[...PK.L,...PK.R]).filter(m=>m.userData.vs.includes(DOM));const h=prc.intersectObjects(list,false)[0];return h?h.object.userData.n:null;}
 // ---------- 触控/鼠标：单指旋转，双指缩放+平移，双击复位，点选血管 ----------
@@ -523,7 +525,8 @@ window.__av.dom=d=>document.querySelector('#dom button[data-d='+d+']').click();
 
 // 应用心跳形变到心脏/血管/光晕（3D 与透视），骨骼不动
 [H3.g,HX.g,V3.G.L,V3.G.R,VX.G.L,VX.G.R].forEach(g=>g.traverse(o=>{if(o.material)patchBeat(o.material);}));
-tg('tgB',v=>{beating=v;if(v)startLoop();else{BEAT.value=0;render();}});startLoop();
-window.__av.beat=(v,s)=>{beating=v;BEAT.value=s||0;draw();};
+tg('tgB',v=>{beating=v;if(v)startLoop();else{BEAT.value=0;BEATA.value=0;render();}});startLoop();
+window.__av.beat=(v,s,q)=>{beating=v;BEAT.value=s||0;BEATA.value=q||0;draw();};
+const hr=document.getElementById('hr'),hrv=document.getElementById('hrv');hr.oninput=()=>{HR=+hr.value;hrv.textContent=HR+' 次/分';};
 </script>
 </body></html>
