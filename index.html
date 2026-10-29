@@ -12,7 +12,7 @@ h1{font-size:15px;margin:0;font-weight:600}
 #stage{display:flex;gap:4px;padding:4px;background:#0a0a0c}
 #v3d,#vx{position:relative;flex:1;aspect-ratio:1/1;max-height:42vh;overflow:hidden;touch-action:none;border-radius:4px}
 #v3d{background:radial-gradient(ellipse at 40% 35%,#2a2220,#121018 70%)}
-#vx{background:radial-gradient(circle,#8a8a8a,#555 70%,#333)}
+#vx{background:radial-gradient(circle,#a2a2a2,#7a7a7a 70%,#555)}
 #v3d canvas,#vx canvas,#inset canvas{display:block;width:100%;height:100%}
 .cap{position:absolute;left:6px;top:4px;font-size:11px;color:#ccc;pointer-events:none;text-shadow:0 0 3px #000}
 #readout{position:absolute;right:6px;top:4px;font-size:16px;font-weight:700;color:#fff;text-shadow:0 0 4px #000;pointer-events:none}
@@ -37,6 +37,7 @@ h1{font-size:15px;margin:0;font-weight:600}
 .fsb{position:absolute;right:6px;bottom:6px;width:34px;height:34px;border-radius:8px;border:1px solid #555;background:rgba(0,0,0,.5);color:#fff;font-size:17px;z-index:4;touch-action:manipulation}
 .fsb.zr{right:46px;font-size:12px}
 #v3d.full,#vx.full{position:fixed;inset:0;max-height:none;aspect-ratio:auto;z-index:50;border-radius:0}
+.tabs #play{width:34px;padding:5px 0;font-size:13px}
 footer{text-align:center;color:#666;font-size:11px;padding:8px 0 18px}
 @media (min-width:720px){
  #stage{gap:6px;padding:6px}
@@ -53,7 +54,7 @@ footer{text-align:center;color:#666;font-size:11px;padding:8px 0 18px}
 </style></head><body>
 <header>
  <h1>冠脉造影投照模拟</h1>
- <div class="tabs"><button data-t="L" class="on">左冠</button><button data-t="R">右冠</button><button data-t="A">全部</button></div>
+ <div class="tabs"><button id="play" title="播放造影" aria-label="播放造影">▶</button><button data-t="L" class="on">左冠</button><button data-t="R">右冠</button><button data-t="A">全部</button></div>
 </header>
 <div id="bar"><span>显示：</span><span>
  <button class="tg on" id="tgL">标注</button>
@@ -232,6 +233,14 @@ function taperTube(cur,r0,r1,seg=72,rad=28){const g=new THREE.TubeGeometry(cur,s
  for(let i=0;i<=seg;i++){const t=i/seg,c=cur.getPointAt(t),r=r0+(r1-r0)*(1-Math.pow(1-t,1.4));for(let j=0;j<=rad;j++){const k=i*(rad+1)+j;v.fromBufferAttribute(p,k).sub(c).multiplyScalar(r).add(c);p.setXYZ(k,v.x,v.y,v.z);}}
  g.computeVertexNormals();return g;}
 VES.forEach(v=>{v.r*=.8;v.r1*=.8;v.geo=taperTube(v.cur,v.r,v.r1);v.j0=new THREE.SphereGeometry(v.r*.98,24,16);v.j1=new THREE.SphereGeometry(v.r1*.98,20,14);});
+// 造影充盈：每支血管沿树的累计路径距离（自开口起）
+let MAXD=0;VES.forEach((v,k)=>{v.len=v.cur.getLength();v.d0=0;
+ if(v.n!=='LM'&&v.n!=='pRCA'){const s0=v.cur.getPoint(0);let bd=1e9;VES.slice(0,k).forEach(u=>{if(u.g!==v.g)return;for(let i=0;i<=60;i++){const d=u.cur.getPoint(i/60).distanceTo(s0);if(d<bd){bd=d;v.d0=u.d0+u.len*i/60;}}});}
+ const seg=72,rad=28,n=v.geo.attributes.position.count,a=new Float32Array(n);for(let i=0;i<=seg;i++)for(let j=0;j<=rad;j++)a[i*(rad+1)+j]=v.d0+v.len*i/seg;
+ v.geo.setAttribute('dist',new THREE.BufferAttribute(a,1));
+ v.j0.setAttribute('dist',new THREE.BufferAttribute(new Float32Array(v.j0.attributes.position.count).fill(v.d0),1));
+ v.j1.setAttribute('dist',new THREE.BufferAttribute(new Float32Array(v.j1.attributes.position.count).fill(v.d0+v.len),1));
+ MAXD=Math.max(MAXD,v.d0+v.len);});
 function buildVessels(matFn){const G={L:new THREE.Group(),R:new THREE.Group()},ms=[];
  VES.forEach(v=>{const mat=matFn(v);[[v.geo,null],[v.j0,0],[v.j1,1]].forEach(([geo,t])=>{const m=new THREE.Mesh(geo,mat);if(t!==null)m.position.copy(v.cur.getPointAt(t));m.renderOrder=2;m.userData.ck=v.ck;m.userData.n=v.n;G[v.g].add(m);ms.push(m);});});
  return {G,ms};}
@@ -272,15 +281,16 @@ for(let i=0;i<14;i++){const y=10-i*1.45;const vb=new THREE.Mesh(new THREE.Cylind
 s3.add(ribs);
 // ===== 造影投照场景 =====
 const sX=new THREE.Scene();
-const xray=c=>new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{c:{value:new THREE.Color(c)},k:{value:1}},
- vertexShader:`varying float f;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
- // 圆管投影厚度 ∝ 弦长 |n.z|；Beer-Lambert 吸收 → 中心深、边缘柔和
- fragmentShader:`uniform vec3 c;uniform float k;varying float f;void main(){float a=(1.-exp(-3.2*f))*.97*k;a*=smoothstep(0.,.2,f);gl_FragColor=vec4(c,a);}`});
+const xray=c=>new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{c:{value:new THREE.Color(c)},k:{value:1},fill:{value:1e3},wash:{value:-1e3},nz:{value:1}},
+ vertexShader:`attribute float dist;varying float f;varying float dd;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);dd=dist;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+ // 圆管投影厚度 ∝ 弦长 |n.z|；Beer-Lambert 吸收；fill/wash 为造影剂前沿/冲刷前沿（路径距离）
+ fragmentShader:`uniform vec3 c;uniform float k,fill,wash,nz;varying float f;varying float dd;void main(){float a=(1.-exp(-3.2*f))*.82*k;a*=smoothstep(0.,.22,f);
+  a*=1.-smoothstep(fill-.9,fill,dd);a*=.25+.75*smoothstep(wash-1.2,wash,dd);a*=nz;if(a<.003)discard;gl_FragColor=vec4(c,a);}`});
 const shadowMat=(c,a)=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{a:{value:a}},
  vertexShader:`varying float f;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
  fragmentShader:`uniform float a;varying float f;void main(){gl_FragColor=vec4(0.,0.,0.,a*(1.-exp(-2.5*f)));}`});
 const HX=buildHeart(shadowMat);sX.add(HX.g);
-const VX=buildVessels(()=>xray(0x0a0a0a));sX.add(VX.G.L,VX.G.R);
+const VX=buildVessels(()=>xray(0x262626));sX.add(VX.G.L,VX.G.R);
 
 const ribX=new THREE.Group();ribs.children.forEach(m=>{const c=new THREE.Mesh(m.geometry,shadowMat(0,.035));c.rotation.copy(m.rotation);c.position.copy(m.position);ribX.add(c);});sX.add(ribX);
 // ===== C 臂示意场景（患者仰卧于检查床，C 臂随角度旋转） =====
@@ -314,7 +324,7 @@ let raf=0;function render(){if(!raf)raf=requestAnimationFrame(draw);}
 function draw(){raf=0;const d=camDir(A,C);
  cam.position.copy(d.clone().multiplyScalar(30));cam.up.set(0,1,0);cam.lookAt(0,0,0);
  [V3,VX].forEach(o=>{o.G.L.visible=side!=='R';o.G.R.visible=side!=='L';});
- VX.ms.forEach(m=>m.material.uniforms.c.value.set(color?COL[m.userData.ck]:0x0a0a0a));
+ VX.ms.forEach(m=>m.material.uniforms.c.value.set(color?COL[m.userData.ck]:0x262626));
  HX.g.visible=showH;H3.ms.forEach(m=>m.material.opacity=(showH?1:.35)*(m.userData.n==='Heart'?.45:.62));
  ribs.visible=showS;GL.forEach(g=>g.visible=g.userData.n===SEL);V3.ms.forEach(m=>m.material.emissiveIntensity=m.userData.n===SEL?.55:.12);ribX.visible=showS;
  key1.position.copy(d.clone().multiplyScalar(10).add(V(-4,6,0)));rim.position.copy(d.clone().multiplyScalar(-10).add(V(3,-2,0)));
@@ -344,7 +354,7 @@ const mapSet=e=>{const r=mapC.getBoundingClientRect();[A,C]=mapC._inv(e.clientX-
 let mdrag=false;mapC.addEventListener('pointerdown',e=>{mdrag=true;mapC.setPointerCapture(e.pointerId);mapSet(e)});mapC.addEventListener('pointermove',e=>mdrag&&mapSet(e));mapC.addEventListener('pointerup',()=>mdrag=false);
 // ---------- 交互（所有入口改同一状态，三视图同步） ----------
 aa.oninput=()=>{A=+aa.value;clearOn();render()};cc.oninput=()=>{C=+cc.value;clearOn();render()};
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));side=b.dataset.t;buildPresets();render()});
+document.querySelectorAll('.tabs button[data-t]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button[data-t]').forEach(x=>x.classList.toggle('on',x===b));side=b.dataset.t;buildPresets();render()});
 const tg=(id,f)=>{const b=document.getElementById(id);b.onclick=()=>{b.classList.toggle('on');f(b.classList.contains('on'));render()}};
 tg('tgL',v=>showL=v);tg('tgC',v=>color=v);tg('tgH',v=>showH=v);tg('tgS',v=>showS=v);
 function clearOn(){document.querySelectorAll('#presets button').forEach(x=>x.classList.remove('on'))}
@@ -398,5 +408,16 @@ function zoomAt(el,cx,cy,f){const r=el.getBoundingClientRect(),asp=r.width/r.hei
 });
 let hoverSel=false;
 window.__av={set:(a,c,z,px,py,sel)=>{A=a;C=c;Z=z;PX=px;PY=py;SEL=sel;render();}};
+
+// ---------- 播放造影（仅右侧透视视图） ----------
+let playing=false,pt0=0,pT=0;const FILL=1.8,HOLD=1.0,WASH=1.1,GAP=.4,CYC=FILL+HOLD+WASH+GAP;
+function setInj(fill,wash,nz){VX.ms.forEach(m=>{const u=m.material.uniforms;if(!u||!u.fill)return;u.fill.value=fill;u.wash.value=wash;u.nz.value=nz;});}
+function phase(t){const L=MAXD+1.2;t%=CYC;if(t<FILL){const x=t/FILL;return [L*(1-Math.pow(1-x,1.6)),-1e3];}
+ if(t<FILL+HOLD)return [1e3,-1e3];if(t<FILL+HOLD+WASH){const x=(t-FILL-HOLD)/WASH;return [1e3,x*L];}return [-5,-1e3];}
+function tick(now){if(!playing)return;pT=(now-pt0)/1000;const [f,w]=phase(pT);setInj(f,w,.94+.06*Math.random());draw();requestAnimationFrame(tick);}
+const pb=document.getElementById('play');
+pb.onclick=()=>{playing=!playing;pb.textContent=playing?'⏸':'▶';pb.classList.toggle('on',playing);
+ if(playing){pt0=performance.now()-pT*1000;requestAnimationFrame(tick);}else{setInj(1e3,-1e3,1);render();}};
+window.__av.inj=(t)=>{const [f,w]=phase(t);setInj(f,w,1);draw();};
 </script>
 </body></html>
