@@ -16,7 +16,10 @@ h1{font-size:15px;margin:0;font-weight:600}
 #stage{display:flex;gap:4px;padding:4px;background:#0a0a0c}
 #v3d,#vx{position:relative;flex:1;aspect-ratio:1/1;max-height:42vh;overflow:hidden;touch-action:none;border-radius:4px}
 #v3d{background:radial-gradient(ellipse at 40% 35%,#2a2220,#121018 70%)}
-#vx{background:radial-gradient(circle,#a2a2a2,#7a7a7a 70%,#555)}
+#vx{background:#8a8a8a}
+#vx .xbg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+#vx canvas:not(.xbg):not(.xnoise){position:relative;z-index:1}
+#bar>span:last-child{display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end}
 #v3d canvas,#vx canvas,#inset canvas{display:block;width:100%;height:100%}
 .cap{position:absolute;left:6px;top:4px;font-size:11px;color:#ccc;pointer-events:none;text-shadow:0 0 3px #000}
 #readout{position:absolute;right:6px;top:4px;font-size:16px;font-weight:700;color:#fff;text-shadow:0 0 4px #000;pointer-events:none}
@@ -105,6 +108,8 @@ input[type=range]{touch-action:pan-y}#vs input{touch-action:none}
  <button class="tg on" id="tgH">心影</button>
  <button class="tg on" id="tgS">胸廓</button>
  <button class="tg on" id="tgB" title="暂停/恢复心跳">♥ 心跳</button>
+ <button class="tg on" id="tgLung" title="肺野/膈肌背景">肺膈</button>
+ <button class="tg" id="tgBr" title="呼吸运动">呼吸</button>
 </span></div>
 <div id="domBar"><span>优势型：</span><span id="dom"><button class="tg on" data-d="R">右优势</button><button class="tg" data-d="C">均衡型</button><button class="tg" data-d="L">左优势</button></span></div>
 <div id="domDesc"></div>
@@ -444,16 +449,36 @@ const VX=buildVessels(()=>xray(0x262626));sX.add(VX.G.L,VX.G.R);
 const boneX=a=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{a:{value:a}},
  vertexShader:`varying float f;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
  fragmentShader:`uniform float a;varying float f;void main(){float k=(1.-exp(-3.*f))*.55+pow(1.-f,2.)*.9;gl_FragColor=vec4(0.,0.,0.,a*k);}`});
-const ribX=new THREE.Group();ribX.position.copy(ribs.position);ribs.children.forEach(m=>{const c=new THREE.Mesh(m.geometry,boneX(m.material===cartM?.02:.055));c.rotation.copy(m.rotation);c.position.copy(m.position);c.scale.copy(m.scale);ribX.add(c);});sX.add(ribX);
-// 透视增强：肺野（透亮）+ 膈肌阴影 + 纵隔软组织
-const softX=(col,a)=>new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:a,depthWrite:false,depthTest:true});
-const lungs=new THREE.Group();
-[[-4.2,.2,-1.2],[3.6,-.2,-.6]].forEach((p,i)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),softX(0xd8d8d8,.14));m.scale.set(2.6,3.4,2.2);m.position.set(...p);lungs.add(m);});
-sX.add(lungs);
-const mediast=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),softX(0x3a3a3a,.08));mediast.scale.set(2.2,3.5,2.4);mediast.position.set(-.2,.2,-.4);sX.add(mediast);
-const diaph=new THREE.Mesh(new THREE.TorusGeometry(5.5,.55,10,48,Math.PI),softX(0x1a1a1a,.16));
-diaph.rotation.set(Math.PI/2.2,.08,0);diaph.position.set(.3,-4.6,-.5);sX.add(diaph);
-const diaph2=new THREE.Mesh(new THREE.PlaneGeometry(14,3.2),softX(0x222222,.1));diaph2.position.set(.2,-5.4,-.2);diaph2.rotation.x=-.35;sX.add(diaph2);
+const ribX=new THREE.Group();ribX.position.copy(ribs.position);ribs.children.forEach(m=>{const c=new THREE.Mesh(m.geometry,boneX(m.material===cartM?.012:.035));c.rotation.copy(m.rotation);c.position.copy(m.position);c.scale.copy(m.scale);ribX.add(c);});sX.add(ribX);
+// 透视背景：柔和肺野透亮 + 膈顶阴影（随投照角度移动，可选呼吸）——2D 渐变层置于 WebGL 之下
+let showLung=true,breathe=false;
+const xbg=document.createElement('canvas');xbg.className='xbg';elX.prepend(xbg);const xbx=xbg.getContext('2d');
+function paintBg(){const w=elX.clientWidth,h=elX.clientHeight;if(w<2||h<2)return;const dpr=Math.min(devicePixelRatio,1.5),W=Math.round(w*dpr),H=Math.round(h*dpr);
+ const br0=breathe?Math.round(Math.sin(performance.now()/1000*2*Math.PI/4)*20):0,key=[W,H,A,C,Z,PX,PY,showLung,br0].join();if(key===xbg._k)return;xbg._k=key;if(xbg.width!==W||xbg.height!==H){xbg.width=W;xbg.height=H;}const g=xbx;
+ // 基底：中灰，四周轻微晕暗（影像增强器样）
+ let r=g.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.hypot(W,H)*.6);r.addColorStop(0,'#9a9a9a');r.addColorStop(.7,'#8a8a8a');r.addColorStop(1,'#626262');g.fillStyle=r;g.fillRect(0,0,W,H);
+ if(!showLung)return;
+ const a=A*Math.PI/180,c=C*Math.PI/180,sc=Math.min(W,H)/(2*S/Z),ox=W/2-PX*sc,oy=H/2+PY*sc;
+ const br=breathe?Math.sin(performance.now()/1000*2*Math.PI/4)*.35:0;
+ // 世界点 → 屏幕（与正交相机一致）
+ const d=camDir(A,C),up=V(0,1,0),rt=up.clone().cross(d).normalize().negate(),u2=d.clone().cross(rt).normalize().negate();
+ const P2=(x,y,z)=>{const q=V(x,y,z);return [ox+q.dot(rt)*sc,oy-q.dot(u2)*sc];};
+ // 肺野：两侧大而柔的透亮区（lighter 混合，低对比）
+ g.save();g.globalCompositeOperation='lighter';
+ [[-5.2,1.5,-1.5],[5.0,1.2,-1.5]].forEach(([x,y,z])=>{const [sx,sy]=P2(x-1.15,y+br*.3,z),R=sc*4.8;
+  const lg=g.createRadialGradient(sx,sy,R*.1,sx,sy,R);lg.addColorStop(0,'rgba(40,40,40,.55)');lg.addColorStop(.55,'rgba(28,28,28,.35)');lg.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=lg;g.beginPath();g.ellipse(sx,sy,R*.75,R,0,0,7);g.fill();});
+ g.restore();
+ // 膈顶：柔和穹顶阴影，下方逐渐变暗（腹部软组织），随 CRA/CAU 与呼吸上下移动
+ const dy=-4.2+br,[cx,cy]=P2(-.6,dy,-.5),[lx]=P2(-9,dy,-.5),[rx]=P2(8,dy,-.5);
+ const dome=sc*(1.4+.8*Math.cos(c)),top=cy-dome*.35-Math.sin(c)*sc*2.4;
+ g.save();g.beginPath();g.moveTo(-10,H+10);g.lineTo(-10,top+dome*1.2);
+ g.bezierCurveTo(Math.min(lx,rx),top-dome*.2,cx-sc*2,top-dome,cx,top-dome*.6);
+ g.bezierCurveTo(cx+sc*2,top-dome,Math.max(lx,rx),top-dome*.1,W+10,top+dome*1.3);g.lineTo(W+10,H+10);g.closePath();
+ const dg=g.createLinearGradient(0,top-dome,0,top+dome*2.5);dg.addColorStop(0,'rgba(0,0,0,0)');dg.addColorStop(.15,'rgba(0,0,0,.13)');dg.addColorStop(1,'rgba(0,0,0,.32)');
+ g.filter='blur('+Math.round(6*dpr)+'px)';g.fillStyle=dg;g.fill();g.restore();
+ // 纵隔/脊柱软组织：中线淡暗带
+ const [mx]=P2(-1.15,0,-5.5),mg=g.createLinearGradient(mx-sc*2.2,0,mx+sc*2.2,0);mg.addColorStop(0,'rgba(0,0,0,0)');mg.addColorStop(.5,'rgba(0,0,0,.08)');mg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=mg;g.fillRect(0,0,W,H);}
 // 颗粒噪声叠加层（2D canvas）
 const xnoise=document.createElement('canvas');xnoise.className='xnoise';elX.appendChild(xnoise);const xnx=xnoise.getContext('2d');
 function paintNoise(){const w=elX.clientWidth,h=elX.clientHeight;if(w<2||h<2)return;const dpr=Math.min(devicePixelRatio,2);
@@ -504,7 +529,7 @@ function draw(){raf=0;[el3,elX].forEach(e=>e.classList.toggle('zm',Z>1||e.classL
  key1.position.copy(d.clone().multiplyScalar(10).add(V(-4,6,0)));rim.position.copy(d.clone().multiplyScalar(-10).add(V(3,-2,0)));
  // 3D 与透视使用完全相同的相机与投影
  let [w,h]=size(R3,el3);let asp=w/h;frust(asp);R3.render(s3,cam);placeLabels(L3,w,h);
- [w,h]=size(RX,elX);asp=w/h;frust(asp);RX.render(sX,cam);placeLabels(LX,w,h);
+ [w,h]=size(RX,elX);asp=w/h;frust(asp);if(typeof paintBg==='function')paintBg();RX.render(sX,cam);placeLabels(LX,w,h);
  // C 臂：局部 +z 指向探测器
  carm.quaternion.setFromUnitVectors(V(0,0,1),d);
  const s=insetEl.clientWidth;RC.setSize(s,insetEl.clientHeight,false);camC.aspect=s/insetEl.clientHeight;camC.updateProjectionMatrix();camC.lookAt(0,-2,0);RC.render(sC,camC);
@@ -637,7 +662,7 @@ function curMax(){let m=1;VES.forEach(v=>{if((side==='A'||v.g===side)&&v.vs.incl
 function phase(t){const L=curMax()+.6;t%=CYC;if(t<FILL){const x=t/FILL;return [-.3+L*(1-Math.pow(1-x,1.25)),-1e3];}
  if(t<FILL+HOLD)return [1e3,-1e3];if(t<FILL+HOLD+WASH){const x=(t-FILL-HOLD)/WASH;return [1e3,x*L];}return [-5,-1e3];}
 let beating=true,looping=false;
-function tick(now){if(!(playing||beating)){looping=false;return;}looping=true;
+function tick(now){if(!(playing||beating||breathe)){looping=false;return;}looping=true;
  if(playing){pT=(now-pt0)/1000;const [f,w]=phase(pT);setInj(f,w,.94+.06*Math.random());}
  BEAT.value=beating?beatS(now/1000):0;draw();requestAnimationFrame(tick);}
 function startLoop(){if(!looping){looping=true;requestAnimationFrame(tick);}}
@@ -800,5 +825,7 @@ document.querySelectorAll('input[type=range]').forEach(r=>{let v0=null;r.addEven
 
 // 点击按钮后释放焦点，避免焦点/指针状态残留影响后续滑动
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b)setTimeout(()=>b.blur(),0);},true);
+
+tg('tgLung',v=>{showLung=v;render();});tg('tgBr',v=>{breathe=v;if(v)startLoop();render();});
 </script>
 </body></html>
