@@ -360,19 +360,27 @@ function drawMap(){const dpr=Math.min(devicePixelRatio,2),w=mapC.clientWidth,h=m
  mx.strokeStyle='#2c2c34';mx.lineWidth=1;for(let a=-90;a<=90;a+=30){mx.beginPath();mx.moveTo(X(a),Y(45));mx.lineTo(X(a),Y(-45));mx.stroke();}
  for(let c=-45;c<=45;c+=15){mx.beginPath();mx.moveTo(X(-90),Y(c));mx.lineTo(X(90),Y(c));mx.stroke();}
  mx.strokeStyle='#4a4a55';mx.beginPath();mx.moveTo(X(0),Y(45));mx.lineTo(X(0),Y(-45));mx.moveTo(X(-90),Y(0));mx.lineTo(X(90),Y(0));mx.stroke();
- mx.font='9px sans-serif';curList().forEach(([n,a,c])=>{mx.setLineDash([2,2]);mx.strokeStyle='#888';mx.strokeRect(X(a)-9,Y(c)-7,18,14);mx.setLineDash([]);mx.fillStyle='#aaa';mx.fillText(n.replace('右冠·','R·'),X(a)+11,Y(c)+3);});
+ mx.font='9px sans-serif';curList().forEach(([n,a,c])=>{const sn=SNAP===n;if(sn){mx.fillStyle='rgba(255,210,61,.25)';mx.fillRect(X(a)-11,Y(c)-9,22,18);}mx.setLineDash(sn?[]:[2,2]);mx.strokeStyle=sn?'#ffd23d':'#888';mx.lineWidth=sn?1.5:1;mx.strokeRect(X(a)-9,Y(c)-7,18,14);mx.setLineDash([]);mx.lineWidth=1;mx.fillStyle=sn?'#ffd23d':'#aaa';mx.fillText(n.replace('右冠·','R·'),X(a)+11,Y(c)+3);});
  mx.strokeStyle='#ffd23d';mx.lineWidth=1.5;mx.beginPath();mx.moveTo(X(A),Y(45));mx.lineTo(X(A),Y(-45));mx.moveTo(X(-90),Y(C));mx.lineTo(X(90),Y(C));mx.stroke();
  mx.fillStyle='#ffd23d';mx.beginPath();mx.arc(X(A),Y(C),4,0,7);mx.fill();
- mapC._inv=(px,py)=>[Math.max(-90,Math.min(90,(px-pad)/(w-2*pad)*180-90)),Math.max(-45,Math.min(45,45-(py-pad*.6)/(h-pad*1.2)*90))];}
+ mapC._fwd=(a,c)=>[X(a),Y(c)];mapC._inv=(px,py)=>[Math.max(-90,Math.min(90,(px-pad)/(w-2*pad)*180-90)),Math.max(-45,Math.min(45,45-(py-pad*.6)/(h-pad*1.2)*90))];}
 mapC.style.touchAction='none';
-const mapSet=e=>{const r=mapC.getBoundingClientRect();[A,C]=mapC._inv(e.clientX-r.left,e.clientY-r.top);A=Math.round(A);C=Math.round(C);clearOn();render();};
+// 吸附：指针距标准体位点 ≤ max(16px, 5° 对应像素) 时吸附到该点正中；每次按原始指针位置重新判断，拖离即脱附
+let SNAP=null;const SNAP_PX=16,SNAP_DEG=5;
+const mapSet=e=>{const r=mapC.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;[A,C]=mapC._inv(px,py);A=Math.round(A);C=Math.round(C);
+ let best=null,bd=1e9;const degPx=mapC._fwd(SNAP_DEG,0)[0]-mapC._fwd(0,0)[0],thr=Math.max(SNAP_PX,degPx);
+ curList().forEach(p=>{const [x,y]=mapC._fwd(p[1],p[2]);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;best=p;}});
+ const prev=SNAP;clearOn();
+ if(best&&bd<=thr){A=best[1];C=best[2];SNAP=best[0];const i=curList().indexOf(best);const btn=document.querySelectorAll('#presets button')[i];if(btn)btn.classList.add('on');
+  document.getElementById('tip').textContent='💡 '+best[0]+'：'+best[3];if(prev!==SNAP&&navigator.vibrate)try{navigator.vibrate(12)}catch(_){} }
+ else SNAP=null;render();};
 let mdrag=false;mapC.addEventListener('pointerdown',e=>{mdrag=true;mapC.setPointerCapture(e.pointerId);mapSet(e)});mapC.addEventListener('pointermove',e=>mdrag&&mapSet(e));mapC.addEventListener('pointerup',()=>mdrag=false);
 // ---------- 交互（所有入口改同一状态，三视图同步） ----------
 aa.oninput=()=>{A=+aa.value;clearOn();render()};cc.oninput=()=>{C=+cc.value;clearOn();render()};
 document.querySelectorAll('.tabs button[data-t]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button[data-t]').forEach(x=>x.classList.toggle('on',x===b));side=b.dataset.t;buildPresets();render()});
 const tg=(id,f)=>{const b=document.getElementById(id);b.onclick=()=>{b.classList.toggle('on');f(b.classList.contains('on'));render()}};
 tg('tgL',v=>showL=v);tg('tgC',v=>color=v);tg('tgH',v=>showH=v);tg('tgS',v=>showS=v);
-function clearOn(){document.querySelectorAll('#presets button').forEach(x=>x.classList.remove('on'))}
+function clearOn(){if(typeof SNAP!=='undefined'&&!mdrag)SNAP=null;document.querySelectorAll('#presets button').forEach(x=>x.classList.remove('on'))}
 function buildPresets(){const box=document.getElementById('presets');box.innerHTML='';
  curList().forEach(([n,a,c,t])=>{const b=document.createElement('button');b.innerHTML=n+'<br><small>'+fmt(a,c)+'</small>';
   b.onclick=()=>{A=a;C=c;render();clearOn();b.classList.add('on');document.getElementById('tip').textContent='💡 '+n+'：'+t};box.appendChild(b)});}
