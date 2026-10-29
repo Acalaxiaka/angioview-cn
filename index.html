@@ -273,26 +273,35 @@ const H3=buildHeart((c,a,n)=>new THREE.MeshPhongMaterial({color:n==='Heart'?0xff
 H3.g.children.forEach(m=>m.renderOrder=1);s3.add(H3.g);
 const V3=buildVessels(v=>new THREE.MeshPhongMaterial({color:COL[v.ck],shininess:90,specular:0xffffff,emissive:COL[v.ck],emissiveIntensity:.12}));
 s3.add(V3.G.L,V3.G.R);
-// 胸廓：弯曲下斜肋骨 + 肋软骨 + 胸骨(柄/体/剑突) + 分节椎体 + 锁骨；淡蓝白半透明
-const ribs=new THREE.Group(),boneM=new THREE.MeshPhongMaterial({color:0xcfe2ff,transparent:true,opacity:.13,depthWrite:false,shininess:60,specular:0x88aaff}),
- cartM=new THREE.MeshPhongMaterial({color:0xa8c8f0,transparent:true,opacity:.08,depthWrite:false});
-const tb=(pts,r,m,seg=48)=>ribs.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),seg,r,10),m));
-const stTop=8.2,stBot=-.6;const stY=i=>stTop-1.2-i*1.25; // 胸骨连接点
-for(let i=0;i<10;i++){const y0=9-i*1.55,W=3.6+Math.min(i,6)*.75-(i>7?(i-7)*.4:0),D=4.6+Math.min(i,5)*.25;
- [-1,1].forEach(sd=>{const pts=[];const T=Math.PI*(.86-(i>6?.04*(i-6):0));
-  for(let k=0;k<=20;k++){const t=k/20*T;const x=sd*(1.0+W*Math.sin(t)*(1+.12*Math.sin(t)));const z=-4.8+D*(1-Math.cos(t))*.95;const y=y0-.3*Math.sin(t)-2.6*Math.pow(t/Math.PI,1.6);pts.push(V(x,y,z));}
-  tb(pts,.17+.02*Math.min(i,4),boneM);
-  const e=pts[pts.length-1];if(i<9){const sy=i<7?stY(i):stY(6)-.4*(i-6);
-   tb([e,V(e.x*.7,(e.y+sy)/2-.2,e.z+.8),V(sd*.55,sy,4.5)],.13,cartM,20);}});}
-// 胸骨
-tb([V(0,stTop,4.0),V(0,stTop-1.4,4.3)],.75,boneM,8);                     // 胸骨柄
-tb([V(0,stTop-1.4,4.3),V(0,2.0,4.6),V(0,stBot,4.6)],.45,boneM,16);      // 胸骨体
-tb([V(0,stBot,4.6),V(0,stBot-1.2,4.3)],.18,boneM,8);                     // 剑突
-// 锁骨
-[-1,1].forEach(sd=>tb([V(sd*.7,stTop+.2,4.0),V(sd*3,stTop+.7,3.4),V(sd*5.5,stTop+.9,1.2),V(sd*7.2,stTop+1.4,-.6)],.28,boneM,30));
-// 分节椎体 + 棘突
-for(let i=0;i<14;i++){const y=10-i*1.45;const vb=new THREE.Mesh(new THREE.CylinderGeometry(.75,.8,1.05,18),boneM);vb.position.set(0,y,-5.3);ribs.add(vb);
- const sp=new THREE.Mesh(new THREE.BoxGeometry(.3,.5,1.4),boneM);sp.position.set(0,y-.3,-6.6);sp.rotation.x=-.4;ribs.add(sp);}
+// 胸廓：12 对弯曲下斜肋骨(渐细) + 肋软骨 + 胸骨(柄/体/剑突) + S 形锁骨 + 椎体(椎体/椎弓/横突/棘突)；整体以胸骨为中线，心脏约 2/3 位于中线左侧
+const ribs=new THREE.Group(),boneM=new THREE.MeshPhongMaterial({color:0xeef3fa,emissive:0x1a2436,specular:0xbfd4ff,shininess:90,transparent:true,opacity:.2,depthWrite:false}),
+ cartM=new THREE.MeshPhongMaterial({color:0x9fc0e8,emissive:0x101828,specular:0x8899bb,shininess:40,transparent:true,opacity:.12,depthWrite:false});
+const tbT=(pts,r0,r1,m,seg=56,rad=12)=>{const c=new THREE.CatmullRomCurve3(pts);const ms=new THREE.Mesh(taperTube(c,r0,r1,seg,rad),m);ms.userData.bone=1;ribs.add(ms);return ms;};
+const add=(geo,m,pos,rot,sc)=>{const ms=new THREE.Mesh(geo,m);ms.position.copy(pos);if(rot)ms.rotation.set(...rot);if(sc)ms.scale.set(...sc);ms.userData.bone=1;ribs.add(ms);return ms;};
+const stTop=8.4,stBot=-.4;const stY=i=>stTop-1.0-i*1.22;
+for(let i=0;i<12;i++){const y0=9.6-i*1.45,W=(i===0?2.2:3.4+Math.min(i,6)*.78)-(i>7?(i-7)*.55:0),D=(i===0?3.4:4.5+Math.min(i,5)*.25);
+ const T=Math.PI*(i===0?.8:i<7?.86:.86-.07*(i-6));
+ [-1,1].forEach(sd=>{const pts=[];
+  for(let k=0;k<=24;k++){const t=k/24*T;const ang=1+.14*Math.sin(t)-.08*Math.sin(2*t); // 后角膨出
+   const x=sd*(1.0+W*Math.sin(t)*ang);const z=-5.0+D*(1-Math.cos(t))*.96;const y=y0-.35*Math.sin(t)-2.8*Math.pow(t/Math.PI,1.5);pts.push(V(x,y,z));}
+  tbT(pts,.2+.02*Math.min(i,4),.13,boneM);
+  const e=pts[pts.length-1];
+  if(i<7)tbT([e,V(e.x*.62,(e.y+stY(i))/2-.15,e.z+.75),V(sd*.62,stY(i),4.55)],.13,.11,cartM,20,8);       // 真肋：肋软骨直达胸骨
+  else if(i<10){const up=stY(6)-.6-(i-7)*.2;tbT([e,V(e.x*.75,e.y+.9,e.z+.6),V(sd*(1.2+(9-i)*.4),up,4.4)],.11,.09,cartM,20,8);} // 假肋：汇入肋弓
+ });}
+// 胸骨：柄(宽)/体/剑突
+add(new THREE.CylinderGeometry(1.05,.75,1.6,24),boneM,V(0,stTop-.8,4.25),[.12,0,0],[1,1,.35]);
+add(new THREE.CylinderGeometry(.62,.72,stTop-1.6-stBot,24),boneM,V(0,(stTop-1.6+stBot)/2,4.55),[.05,0,0],[1,1,.32]);
+add(new THREE.ConeGeometry(.32,1.3,16),boneM,V(0,stBot-.65,4.4),[Math.PI+.15,0,0],[1,1,.4]);
+// 锁骨（S 形）
+[-1,1].forEach(sd=>tbT([V(sd*.9,stTop+.1,4.0),V(sd*2.6,stTop+.55,3.7),V(sd*4.6,stTop+.75,2.4),V(sd*6.2,stTop+1.0,.6),V(sd*7.3,stTop+1.5,-.7)],.34,.26,boneM,40,12));
+// 椎体 + 椎弓 + 横突 + 棘突
+for(let i=0;i<14;i++){const y=11-i*1.5,w=.7+i*.025;
+ add(new THREE.CylinderGeometry(w,w+.05,1.1,22),boneM,V(0,y,-5.5),null,[1.15,1,.9]);
+ add(new THREE.TorusGeometry(w*.75,.16,8,18,Math.PI),boneM,V(0,y,-6.1),[Math.PI/2,0,Math.PI],null);
+ [-1,1].forEach(sd=>add(new THREE.CylinderGeometry(.14,.2,1.5,10),boneM,V(sd*1.05,y+.1,-6.3),[0,0,sd*(Math.PI/2-.25)],null));
+ add(new THREE.CylinderGeometry(.1,.2,1.6,10),boneM,V(0,y-.45,-7.15),[-(Math.PI/2-.6),0,0],[1,1,1.4]);}
+ribs.position.x=-1.15; // 骨性中线(胸骨/脊柱)相对心脏右移 → 心脏约 2/3 位于中线左侧
 s3.add(ribs);
 // ===== 造影投照场景 =====
 const sX=new THREE.Scene();
@@ -307,7 +316,11 @@ const shadowMat=(c,a)=>new THREE.ShaderMaterial({transparent:true,depthWrite:fal
 const HX=buildHeart(shadowMat);sX.add(HX.g);
 const VX=buildVessels(()=>xray(0x262626));sX.add(VX.G.L,VX.G.R);
 
-const ribX=new THREE.Group();ribs.children.forEach(m=>{const c=new THREE.Mesh(m.geometry,shadowMat(0,.035));c.rotation.copy(m.rotation);c.position.copy(m.position);ribX.add(c);});sX.add(ribX);
+// 透视骨密度：皮质骨边缘更致密（边缘增强），椎体更致密
+const boneX=a=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{a:{value:a}},
+ vertexShader:`varying float f;void main(){vec3 n=normalize(normalMatrix*normal);f=abs(n.z);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+ fragmentShader:`uniform float a;varying float f;void main(){float k=(1.-exp(-3.*f))*.55+pow(1.-f,2.)*.9;gl_FragColor=vec4(0.,0.,0.,a*k);}`});
+const ribX=new THREE.Group();ribX.position.copy(ribs.position);ribs.children.forEach(m=>{const c=new THREE.Mesh(m.geometry,boneX(m.material===cartM?.02:.055));c.rotation.copy(m.rotation);c.position.copy(m.position);c.scale.copy(m.scale);ribX.add(c);});sX.add(ribX);
 // ===== C 臂示意场景（患者仰卧于检查床，C 臂随角度旋转） =====
 const sC=new THREE.Scene(),camC=new THREE.PerspectiveCamera(36,1,.1,300);
 camC.position.set(-34,-30,30);camC.up.set(0,0,1);
@@ -365,13 +378,13 @@ function drawMap(){const dpr=Math.min(devicePixelRatio,2),w=mapC.clientWidth,h=m
  mx.fillStyle='#ffd23d';mx.beginPath();mx.arc(X(A),Y(C),4,0,7);mx.fill();
  mapC._fwd=(a,c)=>[X(a),Y(c)];mapC._inv=(px,py)=>[Math.max(-90,Math.min(90,(px-pad)/(w-2*pad)*180-90)),Math.max(-45,Math.min(45,45-(py-pad*.6)/(h-pad*1.2)*90))];}
 mapC.style.touchAction='none';
-// 吸附：指针距标准体位点 ≤ max(16px, 5° 对应像素) 时吸附到该点正中；每次按原始指针位置重新判断，拖离即脱附
-let SNAP=null;const SNAP_PX=16,SNAP_DEG=5;
+// 吸附：指针进入标准体位方框时吸附到该点正中；每次按原始指针位置重新判断，拖离即脱附
+let SNAP=null;const SNAP_PX=16,SNAP_DEG=5,BOX_HW=9,BOX_HH=7,BOX_TOL=2; // 仅当指针落在标记方框(18×14px)内(+2px)时吸附；标签文字不触发
 const mapSet=e=>{const r=mapC.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;[A,C]=mapC._inv(px,py);A=Math.round(A);C=Math.round(C);
  let best=null,bd=1e9;const degPx=mapC._fwd(SNAP_DEG,0)[0]-mapC._fwd(0,0)[0],thr=Math.max(SNAP_PX,degPx);
- curList().forEach(p=>{const [x,y]=mapC._fwd(p[1],p[2]);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;best=p;}});
+ curList().forEach(p=>{const [x,y]=mapC._fwd(p[1],p[2]);if(Math.abs(px-x)>BOX_HW+BOX_TOL||Math.abs(py-y)>BOX_HH+BOX_TOL)return;const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;best=p;}});
  const prev=SNAP;clearOn();
- if(best&&bd<=thr){A=best[1];C=best[2];SNAP=best[0];const i=curList().indexOf(best);const btn=document.querySelectorAll('#presets button')[i];if(btn)btn.classList.add('on');
+ if(best){A=best[1];C=best[2];SNAP=best[0];const i=curList().indexOf(best);const btn=document.querySelectorAll('#presets button')[i];if(btn)btn.classList.add('on');
   document.getElementById('tip').textContent='💡 '+best[0]+'：'+best[3];if(prev!==SNAP&&navigator.vibrate)try{navigator.vibrate(12)}catch(_){} }
  else SNAP=null;render();};
 let mdrag=false;mapC.addEventListener('pointerdown',e=>{mdrag=true;mapC.setPointerCapture(e.pointerId);mapSet(e)});mapC.addEventListener('pointermove',e=>mdrag&&mapSet(e));mapC.addEventListener('pointerup',()=>mdrag=false);
