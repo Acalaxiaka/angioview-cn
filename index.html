@@ -852,7 +852,7 @@ const RHM=(()=>{const tex=(kind)=>{const N=256,c=document.createElement('canvas'
 function loadRealHeart(){const b64=window.HEART3D_B64;if(!b64)return;try{
  const s=atob(b64),n=s.length,u=new Uint8Array(n);for(let i=0;i<n;i++)u[i]=s.charCodeAt(i);const buf=u.buffer,hl=new DataView(buf).getUint32(0,true);
  const H=JSON.parse(new TextDecoder().decode(u.subarray(4,4+hl))),base=4+hl,mn=H.bmin,mx=H.bmax;
- H.parts.forEach(p=>{const q=new Int16Array(buf,base+p.po,p.n*3),f=new Float32Array(p.n*3);for(let i=0;i<p.n*3;i++){const k=i%3;f[i]=mn[k]+(q[i]+32767)/65534*(mx[k]-mn[k]);}
+ H.parts.forEach(p=>{if(p.c===4)return;/* 肺静脉位置不准，隐去以免干扰冠脉构图 */const q=new Int16Array(buf,base+p.po,p.n*3),f=new Float32Array(p.n*3);for(let i=0;i<p.n*3;i++){const k=i%3;f[i]=mn[k]+(q[i]+32767)/65534*(mx[k]-mn[k]);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(f,3));g.setIndex(new THREE.BufferAttribute(p.big?new Uint32Array(buf,base+p.io,p.ni):new Uint16Array(buf,base+p.io,p.ni),1));
   g.computeVertexNormals();// 心外膜纹理坐标：按 LV 长轴柱面展开
   const uv=new Float32Array(p.n*2),d=V();for(let i=0;i<p.n;i++){d.set(f[i*3],f[i*3+1],f[i*3+2]).sub(HB.b);const a=d.dot(HB.ax);d.addScaledVector(HB.ax,-a);uv[i*2]=Math.atan2(d.x,d.z)/Math.PI;uv[i*2+1]=a/4;}
